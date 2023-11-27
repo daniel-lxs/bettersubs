@@ -7,7 +7,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.456.0",
-    "axios": "^1.6.2",
     "elysia": "latest",
     "fuse.js": "^7.0.0",
     "jsonwebtoken": "^9.0.2",

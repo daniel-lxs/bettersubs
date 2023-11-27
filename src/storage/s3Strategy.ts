@@ -32,7 +32,10 @@ export async function uploadFileToS3(
   try {
     await s3.send(command);
   } catch (err) {
-    throw new Error('File upload to S3 failed');
+    if (err instanceof Error) {
+      throw new Error(`File upload to S3 failed ${err.message}`);
+    }
+    throw new Error(`File upload to S3 failed`);
   }
 }
 

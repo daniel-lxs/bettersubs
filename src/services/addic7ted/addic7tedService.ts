@@ -1,4 +1,3 @@
-import axios, { isAxiosError } from 'axios';
 import {
   SearchResponse,
   SubtitleResponse,
@@ -16,14 +15,18 @@ export class Addic7edService {
   }
 
   private async getShowByTvdbId(id: string) {
-    const response = await this.fetchTvdbShowData(id);
-    return response.data.shows[0];
+    const searchResponse = await this.fetchTvdbShowData(id);
+    return searchResponse.shows[0];
   }
 
   private async fetchTvdbShowData(id: string) {
-    return axios.get<SearchResponse>(
+    const response = await fetch(
       `${this.config.apiUrl}/shows/external/tvdb/${id}`
     );
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+    return response.json() as Promise<SearchResponse>;
   }
 
   private mapSubtitleResponseToSubtitle(
@@ -83,14 +86,15 @@ export class Addic7edService {
           'Cannot complete request: season or episode are missing'
         );
       }
-      const response = await this.fetchSubtitleResponse(
+      const subtitleResponse = await this.fetchSubtitleResponse(
         addic7edShowData.id,
         searchOptions.seasonNumber,
         searchOptions.episodeNumber,
         searchOptions.language
       );
 
-      const mappedSubtitles = this.mapSubtitleResponseToSubtitle(response.data);
+      const mappedSubtitles =
+        this.mapSubtitleResponseToSubtitle(subtitleResponse);
       return mappedSubtitles;
     }
   }
@@ -101,33 +105,33 @@ export class Addic7edService {
     episodeNumber: number,
     language: string
   ) {
-    return axios.get<SubtitleResponse>(
+    const response = await fetch(
       `${this.config.apiUrl}/subtitles/get/${showId}/${seasonNumber}/${episodeNumber}/${language}`
     );
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+    return response.json() as Promise<SubtitleResponse>;
   }
 
   async downloadSubtitle(fileId: string) {
     try {
-      const response = await this.fetchSubtitleDownload(fileId);
-      if (response.status >= 200 && response.status < 300) {
-        return response.data;
+      const response = await fetch(
+        `${this.config.apiUrl}/subtitles/download/${fileId}`,
+        {
+          method: 'GET',
+        }
+      );
+      if (response.ok) {
+        return response.text();
       } else {
         throw new Error(`Request failed with status ${response.status}`);
       }
     } catch (error) {
-      if (isAxiosError(error)) {
+      if (error instanceof Error) {
         throw new Error(error.message);
       }
       throw error;
     }
-  }
-
-  private async fetchSubtitleDownload(fileId: string) {
-    return axios.get<string>(
-      `${this.config.apiUrl}/subtitles/download/${fileId}`,
-      {
-        responseType: 'text',
-      }
-    );
   }
 }

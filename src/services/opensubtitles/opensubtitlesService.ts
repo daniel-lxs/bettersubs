@@ -1,4 +1,3 @@
-import axios, { AxiosResponse, isAxiosError } from 'axios';
 import jwt from 'jsonwebtoken';
 import {
   AuthResponse,
@@ -57,22 +56,23 @@ export class OpensubtitlesService {
       };
 
       try {
-        const response = await authenticateRequest(
-          this.config.apiUrl,
-          loginRequestData,
-          headers
-        );
+        const response = await fetch(`${this.config.apiUrl}/login`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(loginRequestData),
+        });
 
-        if (!response.data.token) {
-          throw new Error('Login error, token not found');
-        }
-        if (response.status >= 200 && response.status < 300) {
-          this.token = response.data.token;
+        if (response.ok) {
+          const responseData = await response.json();
+          if (!responseData.token) {
+            throw new Error('Login error, token not found');
+          }
+          this.token = responseData.token;
         } else {
           throw new Error(`Request failed with status ${response.status}`);
         }
       } catch (error) {
-        if (isAxiosError(error)) {
+        if (error instanceof Error) {
           throw new Error(error.message);
         }
         throw error;
@@ -83,7 +83,7 @@ export class OpensubtitlesService {
   private mapSearchResponseToSubtitle(
     searchResponse: SubtitleSearchResponse
   ): Subtitle[] {
-    return searchResponse.data.map(mapSubtitleAttributes);
+    return searchResponse.data.map(this.mapSubtitleAttributes);
   }
 
   async searchSubtitles(searchOptions: SearchOptionsTp): Promise<Subtitle[]> {
@@ -119,17 +119,18 @@ export class OpensubtitlesService {
           this.config.apiUrl
         }/subtitles?${new URLSearchParams(searchParamsRecord)}`;
 
-        const response = await axios.get<SubtitleSearchResponse>(
-          urlWithParams,
-          { headers }
-        );
+        const response = await fetch(urlWithParams, {
+          method: 'GET',
+          headers,
+        });
 
-        if (response.status >= 200 && response.status < 300) {
+        if (response.ok) {
+          const responseData = await response.json();
           // Append the subtitles from the current page to the result array
-          subtitles.push(...this.mapSearchResponseToSubtitle(response.data));
+          subtitles.push(...this.mapSearchResponseToSubtitle(responseData));
 
           // Update totalPages based on the response
-          totalPages = response.data.total_pages;
+          totalPages = responseData.total_pages;
 
           // Move to the next page
           currentPage++;
@@ -140,7 +141,7 @@ export class OpensubtitlesService {
 
       return subtitles;
     } catch (error) {
-      if (isAxiosError(error)) {
+      if (error instanceof Error) {
         throw new Error(error.message);
       }
       throw error;
@@ -161,75 +162,93 @@ export class OpensubtitlesService {
     };
 
     try {
-      const response = await axios.post<DownloadRequestResponse>(
-        `${this.config.apiUrl}/download`,
-        requestData,
-        {
-          headers,
-        }
-      );
-      if (response.status >= 200 && response.status < 300) {
-        return response.data;
+      const response = await fetch(`${this.config.apiUrl}/download`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestData),
+      });
+
+      if (response.ok) {
+        return response.json() as Promise<DownloadRequestResponse>;
       } else {
         throw new Error(`Request failed with status ${response.status}`);
       }
     } catch (error) {
-      if (isAxiosError(error)) {
+      if (error instanceof Error) {
         throw new Error(error.message);
       }
       throw error;
     }
+  }
+
+  private mapSubtitleAttributes(datum: any): Subtitle {
+    const featureDetails = datum.attributes.feature_details;
+    return {
+      originId: datum.id,
+      provider: SubtitleProviders.Opensubtitles,
+      fileId: datum.attributes.subtitle_id,
+      createdOn: datum.attributes.upload_date,
+      url: datum.attributes.url,
+      comments: datum.attributes.comments,
+      releaseName: datum.attributes.release,
+      featureDetails: {
+        featureType: datum.attributes.feature_details.feature_type,
+        year: featureDetails.year,
+        title: featureDetails.title,
+        featureName: featureDetails.movie_name,
+        imdbId: `tt${featureDetails.imdb_id}`,
+        seasonNumber: featureDetails.season_number,
+        episodeNumber: featureDetails.episode_number,
+      },
+    };
   }
 
   async downloadSubtitle(fileId: string): Promise<string> {
     try {
       await this.authenticate();
       const { link } = await this.requestDownload(fileId);
-      const response = await axios.get<string>(link, {
-        responseType: 'text',
+      console.log(link);
+
+      const response = await fetch(link, {
+        method: 'GET',
+        headers: this.getHeaders(),
       });
-      if (response.status >= 200 && response.status < 300) {
-        return response.data;
+
+      if (response.ok) {
+        return response.text();
       } else {
         throw new Error(`Request failed with status ${response.status}`);
       }
     } catch (error) {
-      if (isAxiosError(error)) {
+      if (error instanceof Error) {
         throw new Error(error.message);
       }
       throw error;
     }
   }
-}
 
-async function authenticateRequest(
-  baseApiUrl: string,
-  loginRequestData: any,
-  headers: Record<string, string>
-): Promise<AxiosResponse<AuthResponse>> {
-  return axios.post<AuthResponse>(`${baseApiUrl}/login`, loginRequestData, {
-    headers,
-  });
-}
+  async authenticateRequest(
+    baseApiUrl: string,
+    loginRequestData: any,
+    headers: Record<string, string>
+  ): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${baseApiUrl}/login`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(loginRequestData),
+      });
 
-function mapSubtitleAttributes(datum: any): Subtitle {
-  const featureDetails = datum.attributes.feature_details;
-  return {
-    originId: datum.id,
-    provider: SubtitleProviders.Opensubtitles,
-    fileId: datum.attributes.subtitle_id,
-    createdOn: datum.attributes.upload_date,
-    url: datum.attributes.url,
-    comments: datum.attributes.comments,
-    releaseName: datum.attributes.release,
-    featureDetails: {
-      featureType: datum.attributes.feature_details.feature_type,
-      year: featureDetails.year,
-      title: featureDetails.title,
-      featureName: featureDetails.movie_name,
-      imdbId: `tt${featureDetails.imdb_id}`,
-      seasonNumber: featureDetails.season_number,
-      episodeNumber: featureDetails.episode_number,
-    },
-  };
+      if (response.ok) {
+        return response.json() as Promise<AuthResponse>;
+      } else {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      }
+      throw error;
+    }
+  }
 }

@@ -1,4 +1,3 @@
-import axios, { isAxiosError } from 'axios';
 import jwt from 'jsonwebtoken';
 import { TvdbServiceConfig, SearchResult, ShowData } from './types';
 
@@ -34,25 +33,29 @@ export class TvdbService {
         const apiUrl = this.config.apiUrl;
         const apiKey = this.config.apiKey;
 
-        const loginResult = await axios.post<{
-          status: string;
-          data: { token: string };
-        }>(`${apiUrl}/login`, {
-          apiKey,
-          pin: '1234', // for some reason you need to pass this
+        const loginResult = await fetch(`${apiUrl}/login`, {
+          method: 'POST',
+          body: JSON.stringify({
+            apiKey,
+            pin: '1234', // for some reason you need to pass this
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
 
-        if (
-          loginResult.data.status !== 'success' ||
-          !loginResult.data.data.token
-        ) {
-          throw new Error('Authentication failed or token not received.');
+        if (loginResult.ok) {
+          const responseData = await loginResult.json();
+          if (responseData.status !== 'success' || !responseData.data.token) {
+            throw new Error('Authentication failed or token not received.');
+          }
+          this.token = responseData.data.token;
+        } else {
+          throw new Error(`Request failed with status ${loginResult.status}`);
         }
-
-        this.token = loginResult.data.data.token;
       }
     } catch (error) {
-      if (isAxiosError(error)) {
+      if (error instanceof Error) {
         throw new Error(error.message);
       }
       throw error;
@@ -66,17 +69,20 @@ export class TvdbService {
     const headers = {
       Authorization: `Bearer ${this.token}`,
     };
-    try {
-      const result = await axios.get<SearchResult>(
-        `${apiUrl}/search/remoteid/${imdbId}`,
-        {
-          headers,
-        }
-      );
 
-      return result.data.data[0].series;
+    try {
+      const result = await fetch(`${apiUrl}/search/remoteid/${imdbId}`, {
+        headers,
+      });
+
+      if (result.ok) {
+        const responseData = await result.json();
+        return responseData.data[0].series;
+      } else {
+        throw new Error(`Request failed with status ${result.status}`);
+      }
     } catch (error) {
-      if (isAxiosError(error)) {
+      if (error instanceof Error) {
         throw new Error(error.message);
       }
       throw error;
