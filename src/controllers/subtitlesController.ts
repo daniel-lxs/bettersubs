@@ -1,9 +1,4 @@
-import Elysia, {
-  InternalServerError,
-  NotFoundError,
-  ValidationError,
-  t,
-} from 'elysia';
+import Elysia, { InternalServerError, NotFoundError, t } from 'elysia';
 import { SearchOptionsDto } from '../dtos/searchOptions';
 import getEnvOrThrow from '../helpers/getOrThrow';
 import { OpensubtitlesService } from '../services/opensubtitles/opensubtitlesService';
@@ -93,8 +88,10 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             switch (provider) {
               case SubtitleProviders.Opensubtitles:
                 file = await opensubtitlesService.downloadSubtitle(fileId);
+                break;
               case SubtitleProviders.Addic7ted:
                 file = await addic7edService.downloadSubtitle(fileId);
+                break;
             }
             if (!file || file.length < 1) {
               throw new NotFoundError('Subtitle file not found');
