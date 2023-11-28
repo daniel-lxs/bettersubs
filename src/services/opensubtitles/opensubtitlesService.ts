@@ -99,7 +99,6 @@ export class OpensubtitlesService {
           imdb_id: searchOptions.imdbId.split('tt')[1],
           languages: searchOptions.language,
           type: searchOptions.featureType,
-          year: searchOptions.year.toString(),
           page: currentPage.toString(),
         };
 

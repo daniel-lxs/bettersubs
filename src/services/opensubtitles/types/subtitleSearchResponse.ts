@@ -1,4 +1,4 @@
-import { FeatureType } from '../../../model/';
+import { FeatureType } from '../../../types/';
 
 export interface SubtitleSearchResponse {
   total_pages: number;
