@@ -66,7 +66,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             });
 
             if (!body.query) {
-              combinedResults.sort((a, b) => a.downloadCount - b.downloadCount);
+              combinedResults.sort((a, b) => b.downloadCount - a.downloadCount);
               return combinedResults;
             }
 
