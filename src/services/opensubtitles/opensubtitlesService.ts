@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import {
   AuthResponse,
+  Datum,
   DownloadRequestResponse,
   OpensubtitlesServiceConfig,
   SearchParams,
@@ -180,7 +181,7 @@ export class OpensubtitlesService {
     }
   }
 
-  private mapSubtitleAttributes(datum: any): Subtitle {
+  private mapSubtitleAttributes(datum: Datum): Subtitle {
     const featureDetails = datum.attributes.feature_details;
     return {
       originId: datum.id,
@@ -190,6 +191,7 @@ export class OpensubtitlesService {
       url: datum.attributes.url,
       comments: datum.attributes.comments,
       releaseName: datum.attributes.release,
+      downloadCount: datum.attributes.download_count,
       featureDetails: {
         featureType: datum.attributes.feature_details.feature_type,
         year: featureDetails.year,

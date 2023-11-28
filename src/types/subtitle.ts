@@ -1,5 +1,5 @@
-import { FeatureType } from "./featureTypes";
-import { SubtitleProviders } from "./subtitleProviders";
+import { FeatureType } from './featureTypes';
+import { SubtitleProviders } from './subtitleProviders';
 
 export interface Subtitle {
   originId: string;
@@ -10,6 +10,7 @@ export interface Subtitle {
   releaseName: string;
   featureDetails: FeatureDetails;
   comments?: string;
+  downloadCount: number;
 }
 
 export interface FeatureDetails {

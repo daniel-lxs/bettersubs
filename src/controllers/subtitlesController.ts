@@ -65,6 +65,11 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
               ignoreLocation: true,
             });
 
+            if (!body.query) {
+              combinedResults.sort((a, b) => a.downloadCount - b.downloadCount);
+              return combinedResults;
+            }
+
             const fuseResult = fuse.search(body.query);
             return fuseResult;
           } catch (error) {

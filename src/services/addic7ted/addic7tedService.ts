@@ -2,6 +2,7 @@ import {
   SearchResponse,
   SubtitleResponse,
   Addic7edServiceConfig,
+  MatchingSubtitle,
 } from './types';
 import { Subtitle, FeatureType, SubtitleProviders } from '../../types';
 import { TvdbService } from '../tvdb/tvdbService';
@@ -41,7 +42,7 @@ export class Addic7edService {
   }
 
   private mapMatchingSubtitle(
-    matchingSubtitle: any,
+    matchingSubtitle: MatchingSubtitle,
     show: string,
     season: number,
     number: number,
@@ -52,6 +53,7 @@ export class Addic7edService {
       version = '',
       downloadUri,
       discovered: subtitleDiscovered,
+      downloadCount,
     } = matchingSubtitle;
 
     return {
@@ -61,6 +63,7 @@ export class Addic7edService {
       createdOn: subtitleDiscovered,
       url: downloadUri,
       releaseName: version,
+      downloadCount: downloadCount,
       featureDetails: {
         featureType: FeatureType.Episode,
         title,
@@ -97,6 +100,7 @@ export class Addic7edService {
         this.mapSubtitleResponseToSubtitle(subtitleResponse);
       return mappedSubtitles;
     }
+    return [];
   }
 
   private async fetchSubtitleResponse(
