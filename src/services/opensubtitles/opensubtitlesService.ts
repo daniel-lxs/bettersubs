@@ -9,8 +9,10 @@ import {
 } from './types';
 import { Subtitle } from '../../types/subtitle';
 import { FeatureType, SubtitleProviders } from '../../types';
-import { SearchOptionsTp } from '../../dtos/searchOptions';
+import { SearchOptionsTp } from '../../controllers/dtos/searchOptions';
 import objectToRecord from '../../helpers/objectToRecord';
+import getEnvOrThrow from '../../helpers/getOrThrow';
+import { OpensubtitlesService } from './opensubtitlesService';
 
 export class OpensubtitlesService {
   private config: OpensubtitlesServiceConfig;
@@ -193,7 +195,8 @@ export class OpensubtitlesService {
       releaseName: datum.attributes.release,
       downloadCount: datum.attributes.download_count,
       featureDetails: {
-        featureType: datum.attributes.feature_details.feature_type,
+        featureType:
+          datum.attributes.feature_details.feature_type.toLocaleLowerCase() as FeatureType,
         year: featureDetails.year,
         title: featureDetails.title,
         featureName: featureDetails.movie_name,
@@ -208,7 +211,6 @@ export class OpensubtitlesService {
     try {
       await this.authenticate();
       const { link } = await this.requestDownload(fileId);
-      console.log(link);
 
       const response = await fetch(link, {
         method: 'GET',
@@ -252,4 +254,15 @@ export class OpensubtitlesService {
       throw error;
     }
   }
+}
+
+function initializeOpensubtitlesService(): OpensubtitlesService {
+  const opensubtitlesService = new OpensubtitlesService({
+    apiUrl: getEnvOrThrow('OB_API_URL'),
+    apiKey: getEnvOrThrow('OB_API_KEY'),
+    userAgent: getEnvOrThrow('USER_AGENT'),
+    username: getEnvOrThrow('OB_USERNAME'),
+    password: getEnvOrThrow('OB_PASSWORD'),
+  });
+  return opensubtitlesService;
 }

@@ -6,7 +6,8 @@ import {
 } from './types';
 import { Subtitle, FeatureType, SubtitleProviders } from '../../types';
 import { TvdbService } from '../tvdb/tvdbService';
-import { SearchOptionsTp } from '../../dtos/searchOptions';
+import { SearchOptionsTp } from '../../controllers/dtos/searchOptions';
+import { ShowData } from '../tvdb/types';
 
 export class Addic7edService {
   private config: Addic7edServiceConfig;
@@ -34,10 +35,18 @@ export class Addic7edService {
     subtitleResponse: SubtitleResponse
   ): Subtitle[] {
     const { matchingSubtitles, episode } = subtitleResponse;
-    const { season, number, title, show } = episode;
+    const { season, number, title, show, year, showImdbId } = episode;
 
     return matchingSubtitles.map((matchingSubtitle) =>
-      this.mapMatchingSubtitle(matchingSubtitle, show, season, number, title)
+      this.mapMatchingSubtitle(
+        matchingSubtitle,
+        show,
+        season,
+        number,
+        title,
+        year,
+        showImdbId
+      )
     );
   }
 
@@ -46,7 +55,9 @@ export class Addic7edService {
     show: string,
     season: number,
     number: number,
-    title: string
+    title: string,
+    year: number,
+    showImdbId: string
   ): Subtitle {
     const {
       subtitleId,
@@ -67,6 +78,8 @@ export class Addic7edService {
       featureDetails: {
         featureType: FeatureType.Episode,
         title,
+        year,
+        imdbId: showImdbId,
         featureName: show,
         seasonNumber: season,
         episodeNumber: number,
@@ -75,7 +88,7 @@ export class Addic7edService {
     };
   }
 
-  async searchSubtitles(searchOptions: SearchOptionsTp) {
+  async searchSubtitles(searchOptions: SearchOptionsTp): Promise<Subtitle[]> {
     const tvdbShowData = await this.tvdbService.getShowByIMDBId(
       searchOptions.imdbId
     );
@@ -93,7 +106,9 @@ export class Addic7edService {
         addic7edShowData.id,
         searchOptions.seasonNumber,
         searchOptions.episodeNumber,
-        searchOptions.language
+        searchOptions.language,
+        searchOptions.imdbId,
+        tvdbShowData
       );
 
       const mappedSubtitles =
@@ -107,7 +122,9 @@ export class Addic7edService {
     showId: string,
     seasonNumber: number,
     episodeNumber: number,
-    language: string
+    language: string,
+    imdbId: string,
+    showData: ShowData
   ) {
     const response = await fetch(
       `${this.config.apiUrl}/subtitles/get/${showId}/${seasonNumber}/${episodeNumber}/${language}`
@@ -115,7 +132,11 @@ export class Addic7edService {
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
     }
-    return response.json() as Promise<SubtitleResponse>;
+    const data: SubtitleResponse = await response.json();
+    data.episode.year = parseInt(showData.year);
+    data.episode.showImdbId = imdbId;
+
+    return data;
   }
 
   async downloadSubtitle(fileId: string) {

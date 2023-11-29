@@ -1,5 +1,5 @@
 import { t } from 'elysia';
-import { FeatureType } from '../types';
+import { FeatureType } from '../../types';
 
 export const SearchOptionsDto = t.Object({
   imdbId: t.String(),

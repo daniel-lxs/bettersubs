@@ -15,10 +15,10 @@ export interface Subtitle {
 
 export interface FeatureDetails {
   featureType: FeatureType;
-  year?: number;
+  year: number;
   title: string;
   featureName: string;
-  imdbId?: string;
+  imdbId: string;
   seasonNumber?: number;
   episodeNumber?: number;
 }

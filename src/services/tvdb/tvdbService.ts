@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { TvdbServiceConfig, SearchResult, ShowData } from './types';
+import getEnvOrThrow from '../../helpers/getOrThrow';
+import { TvdbService } from './tvdbService';
 
 export class TvdbService {
   private config: TvdbServiceConfig;
@@ -88,4 +90,12 @@ export class TvdbService {
       throw error;
     }
   }
+}
+
+function initializeTvdbService(): TvdbService {
+  const tvdbService = new TvdbService({
+    apiUrl: getEnvOrThrow('TVDB_API_URL'),
+    apiKey: getEnvOrThrow('TVDB_API_KEY'),
+  });
+  return tvdbService;
 }

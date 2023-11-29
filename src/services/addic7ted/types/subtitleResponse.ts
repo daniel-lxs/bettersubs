@@ -4,6 +4,8 @@ export interface SubtitleResponse {
 }
 
 export interface Episode {
+  showImdbId: string;
+  year: number;
   season: number;
   number: number;
   title: string;

@@ -1,73 +1,56 @@
 import Elysia, { InternalServerError, NotFoundError, t } from 'elysia';
-import { SearchOptionsDto } from '../dtos/searchOptions';
-import getEnvOrThrow from '../helpers/getOrThrow';
-import { OpensubtitlesService } from '../services/opensubtitles/opensubtitlesService';
-import { TvdbService } from '../services/tvdb/tvdbService';
+import { v4 as uuidv4 } from 'uuid';
+import { SearchOptionsDto } from './dtos/searchOptions';
 import Fuse from 'fuse.js';
-import { Addic7edService } from '../services/addic7ted/addic7tedService';
-import { SubtitleProviders } from '../types';
-import {
-  getFileFromS3,
-  getS3Client,
-  uploadFileToS3,
-} from '../storage/s3Strategy';
+import { FeatureType, Subtitle, SubtitleProviders } from '../types';
+import { getFileFromS3, uploadFileToS3 } from '../storage/s3Strategy';
 import { Logger } from 'logging';
+import cache from '../helpers/cache';
+import { createSubtitle } from '../db/subtitleRepository';
+import { initializeOpensubtitlesService } from '../services/opensubtitles/initializeOpensubtitlesService';
+import { initializeTvdbService } from '../services/tvdb/initializeTvdbService';
+import { initializeAddic7tedService } from '../services/addic7ted/initializeAddic7tedService';
+import { initializeS3Client } from '../storage/initializeS3Client';
 
 export function subtitlesController(app: Elysia, logger: Logger): Elysia {
-  const opensubtitlesService = new OpensubtitlesService({
-    apiUrl: getEnvOrThrow('OB_API_URL'),
-    apiKey: getEnvOrThrow('OB_API_KEY'),
-    userAgent: getEnvOrThrow('USER_AGENT'),
-    username: getEnvOrThrow('OB_USERNAME'),
-    password: getEnvOrThrow('OB_PASSWORD'),
-  });
-
-  const tvdbService = new TvdbService({
-    apiUrl: getEnvOrThrow('TVDB_API_URL'),
-    apiKey: getEnvOrThrow('TVDB_API_KEY'),
-  });
-
-  const addic7edService = new Addic7edService(
-    {
-      apiUrl: getEnvOrThrow('ADICC7ED_API_URL'),
-    },
-    tvdbService
-  );
-
-  const s3Config = {
-    accessKeyId: getEnvOrThrow('S3_ACCESS_KEY_ID'),
-    secretAccessKey: getEnvOrThrow('S3_SECRET_ACCESS_KEY'),
-    region: getEnvOrThrow('S3_REGION'),
-    bucket: getEnvOrThrow('S3_BUCKET'),
-  };
-  const s3Client = getS3Client(s3Config);
+  const opensubtitlesService = initializeOpensubtitlesService();
+  const tvdbService = initializeTvdbService();
+  const addic7edService = initializeAddic7tedService(tvdbService);
+  const { s3Client, s3Config } = initializeS3Client();
 
   app.group('/subtitle', (app) =>
     app
       .model({ SearchOptionsDto })
+      .use(cache())
       .post(
         '/search',
-        async ({ body }) => {
+        async ({ body, cache }) => {
           try {
-            const opensubtitlesPromise =
-              opensubtitlesService.searchSubtitles(body);
+            let queryKey = uuidv4();
 
-            const addic7edPromise = addic7edService.searchSubtitles(body);
+            const results = (
+              await Promise.all([
+                opensubtitlesService.searchSubtitles(body),
+                body.featureType === FeatureType.Episode
+                  ? addic7edService.searchSubtitles(body)
+                  : Promise.resolve([]),
+              ])
+            ).flat();
 
-            const results = await Promise.all([
-              opensubtitlesPromise,
-              addic7edPromise,
-            ]);
-            const combinedResults = results.flat();
+            results.forEach((e) => {
+              e.fileId = `${queryKey};${e.fileId}`;
+            });
 
-            const fuse = new Fuse(combinedResults, {
+            cache.set(queryKey, results); //We cache the search to extract metadata later
+
+            const fuse = new Fuse(results, {
               keys: ['releaseName', 'comments'],
               ignoreLocation: true,
             });
 
             if (!body.query) {
-              combinedResults.sort((a, b) => b.downloadCount - a.downloadCount);
-              return combinedResults;
+              results.sort((a, b) => b.downloadCount - a.downloadCount);
+              return results;
             }
 
             const fuseResult = fuse.search(body.query);
@@ -83,27 +66,60 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
       )
       .get(
         '/',
-        async ({ query: { fileId, provider } }) => {
+        async ({ query: { fileId, provider }, cache }) => {
+          let subtitleFile: string;
+          const [queryKey, cachedFileId] = fileId.split(';');
+
           try {
-            const subtitle = await getFileFromS3(s3Client, s3Config, fileId);
-            return subtitle;
+            const subtitle = await getFileFromS3(
+              s3Client,
+              s3Config,
+              cachedFileId
+            );
+            subtitleFile = subtitle;
           } catch (error) {
-            let file: string | undefined;
-            //TODO: add more providers
-            switch (provider) {
-              case SubtitleProviders.Opensubtitles:
-                file = await opensubtitlesService.downloadSubtitle(fileId);
-                break;
-              case SubtitleProviders.Addic7ted:
-                file = await addic7edService.downloadSubtitle(fileId);
-                break;
-            }
-            if (!file || file.length < 1) {
-              throw new NotFoundError('Subtitle file not found');
-            }
-            uploadFileToS3(s3Client, s3Config, fileId, file);
-            return file;
+            logger.info('Subtitle not found in storage');
           }
+
+          switch (provider) {
+            case SubtitleProviders.Opensubtitles:
+              subtitleFile = await opensubtitlesService.downloadSubtitle(
+                cachedFileId
+              );
+              break;
+            case SubtitleProviders.Addic7ted:
+              subtitleFile = await addic7edService.downloadSubtitle(
+                cachedFileId
+              );
+              break;
+          }
+          if (!subtitleFile || subtitleFile.length < 1) {
+            throw new NotFoundError('Subtitle file not found');
+          }
+
+          const subtitleMetadatum: Subtitle[] = cache.get(queryKey);
+          if (!subtitleMetadatum) {
+            throw new NotFoundError('Invalid fileId, try searching again');
+          }
+
+          const subtitleMetadata = subtitleMetadatum.find((subtitle) =>
+            subtitle.fileId.includes(cachedFileId)
+          );
+          if (!subtitleMetadata) {
+            throw new NotFoundError('Subtitle file not found');
+          }
+          subtitleMetadata.fileId = cachedFileId; //Original file id
+
+          createSubtitle(subtitleMetadata);
+          cache.remove(queryKey);
+
+          uploadFileToS3(s3Client, s3Config, cachedFileId, subtitleFile);
+          return new Response(subtitleFile, {
+            headers: {
+              'Content-Disposition': `attachment; filename=${cachedFileId}.srt`,
+              'Content-Type': 'text/plain',
+            },
+          });
         },
         {
           query: t.Object({
