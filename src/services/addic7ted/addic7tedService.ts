@@ -6,7 +6,7 @@ import {
 } from './types';
 import { Subtitle, FeatureType, SubtitleProviders } from '../../types';
 import { TvdbService } from '../tvdb/tvdbService';
-import { SearchOptionsTp } from '../../controllers/dtos/searchOptions';
+import { SearchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
 import { ShowData } from '../tvdb/types';
 
 export class Addic7edService {
@@ -68,7 +68,7 @@ export class Addic7edService {
     } = matchingSubtitle;
 
     return {
-      originId: subtitleId,
+      externalId: subtitleId,
       provider: SubtitleProviders.Addic7ted,
       fileId: subtitleId,
       createdOn: subtitleDiscovered,
