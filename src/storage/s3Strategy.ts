@@ -5,12 +5,18 @@ import {
 } from '@aws-sdk/client-s3';
 import { S3Config } from './types/s3Config';
 
-export function getS3Client(config: S3Config): S3Client {
+export function getS3Client({
+  endpoint,
+  region,
+  accessKeyId,
+  secretAccessKey,
+}: S3Config): S3Client {
   return new S3Client({
-    region: config.region,
+    endpoint: endpoint,
+    region: region,
     credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
+      accessKeyId: accessKeyId,
+      secretAccessKey: secretAccessKey,
     },
   });
 }

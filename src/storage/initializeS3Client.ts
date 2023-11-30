@@ -8,6 +8,7 @@ export function initializeS3Client(): {
   s3Config: S3Config;
 } {
   const s3Config = {
+    endpoint: getEnvOrThrow('S3_ENDPOINT'),
     accessKeyId: getEnvOrThrow('S3_ACCESS_KEY_ID'),
     secretAccessKey: getEnvOrThrow('S3_SECRET_ACCESS_KEY'),
     region: getEnvOrThrow('S3_REGION'),
