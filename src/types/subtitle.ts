@@ -2,12 +2,13 @@ import { FeatureType } from './featureTypes';
 import { SubtitleProviders } from './subtitleProviders';
 
 export interface Subtitle {
-  originId: string;
+  externalId: string;
   provider: SubtitleProviders;
   fileId: string;
   createdOn: Date;
   url: string;
   releaseName: string;
+  featureDetailsId?: number;
   featureDetails: FeatureDetails;
   comments?: string;
   downloadCount: number;
