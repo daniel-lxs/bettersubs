@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { TvdbServiceConfig, SearchResult, ShowData } from './types';
+import { TvdbServiceConfig, ShowData } from './types';
 import getEnvOrThrow from '../../helpers/getOrThrow';
-import { TvdbService } from './tvdbService';
 
 export class TvdbService {
   private config: TvdbServiceConfig;
@@ -10,7 +9,7 @@ export class TvdbService {
   constructor(config: TvdbServiceConfig) {
     this.config = config;
     this.token = '';
-    this.authenticate();
+    //this.authenticate();
   }
 
   isTokenExpired(): boolean {

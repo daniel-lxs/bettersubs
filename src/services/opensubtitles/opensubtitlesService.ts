@@ -9,10 +9,9 @@ import {
 } from './types';
 import { Subtitle } from '../../types/subtitle';
 import { FeatureType, SubtitleProviders } from '../../types';
-import { SearchOptionsTp } from '../../controllers/dtos/searchOptions';
+import { SearchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
 import objectToRecord from '../../helpers/objectToRecord';
 import getEnvOrThrow from '../../helpers/getOrThrow';
-import { OpensubtitlesService } from './opensubtitlesService';
 
 export class OpensubtitlesService {
   private config: OpensubtitlesServiceConfig;
@@ -21,7 +20,7 @@ export class OpensubtitlesService {
   constructor(config: OpensubtitlesServiceConfig) {
     this.config = config;
     this.token = '';
-    this.authenticate();
+    //this.authenticate();
   }
 
   private getHeaders(): Record<string, string> {
@@ -186,7 +185,7 @@ export class OpensubtitlesService {
   private mapSubtitleAttributes(datum: Datum): Subtitle {
     const featureDetails = datum.attributes.feature_details;
     return {
-      originId: datum.id,
+      externalId: datum.id,
       provider: SubtitleProviders.Opensubtitles,
       fileId: datum.attributes.subtitle_id,
       createdOn: datum.attributes.upload_date,
