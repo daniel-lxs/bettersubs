@@ -5,7 +5,7 @@ function objectHasId(object: Object): object is { id: number } {
   return object.hasOwnProperty('id');
 }
 
-export function createSubtitle(subtitle: Subtitle) {
+export function insertSubtitle(subtitle: Subtitle) {
   try {
     const db = getDb();
 
