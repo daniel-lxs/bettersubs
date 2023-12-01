@@ -17,7 +17,7 @@ import { initializeTvdbService } from '../services/tvdb/initializeTvdbService';
 import { initializeAddic7tedService } from '../services/addic7ted/initializeAddic7tedService';
 
 import { initializeS3Client } from '../storage/initializeS3Client';
-import { createSubtitle } from '../db/subtitleRepository';
+import { insertSubtitle } from '../db/subtitleRepository';
 import { generateSubtitleUrl } from '../helpers/getSubtitleUrl';
 
 export function subtitlesController(app: Elysia, logger: Logger): Elysia {
@@ -28,7 +28,6 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
 
   app.group('/subtitle', (app) =>
     app
-      .model({ SearchOptionsDto })
       .use(cache())
       .post(
         '/search',
@@ -75,6 +74,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
       .post(
         '/create',
         async ({ body, set }) => {
+          const file = await body.file.text();
           const fileId = uuidv4();
           const provider = SubtitleProviders.Bettersubs;
           const {
@@ -105,7 +105,8 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             },
           };
           try {
-            createSubtitle(newSubtitle);
+            insertSubtitle(newSubtitle);
+            uploadFileToS3(s3Client, s3Config, fileId, file);
             set.status = 201;
           } catch (error) {
             logger.error(JSON.stringify(error));
@@ -164,6 +165,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
           subtitleMetadata.fileId = cachedFileId; // Original file id
           //cache.remove(queryKey);
           uploadFileToS3(s3Client, s3Config, cachedFileId, subtitleFile);
+          insertSubtitle(subtitleMetadata);
 
           const responseHeaders = {
             'Content-Disposition': `attachment; filename=${cachedFileId}.srt`,
