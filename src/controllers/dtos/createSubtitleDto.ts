@@ -1,7 +1,8 @@
 import { t } from 'elysia';
-import { FeatureType, SubtitleProviders } from '../../types';
+import { FeatureType } from '../../types';
 
 export const CreateSubtitleDto = t.Object({
+  file: t.File({ maxSize: '1m', type: 'text/plain' }),
   releaseName: t.String(),
   comments: t.Optional(t.String()),
   featureDetails: t.Object({
