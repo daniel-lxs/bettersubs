@@ -1,9 +1,14 @@
-import Elysia, { InternalServerError, NotFoundError, t } from 'elysia';
+import Elysia, {
+  InternalServerError,
+  NotFoundError,
+  ValidationError,
+  t,
+} from 'elysia';
 import { v4 as uuidv4 } from 'uuid';
 import Fuse from 'fuse.js';
 
 import { FeatureType, Subtitle, SubtitleProviders } from '../types';
-import { CreateSubtitleDto, SearchOptionsDto } from './dtos';
+import { createSubtitleDto, searchOptionsDto } from './dtos';
 
 import { getFileFromS3, uploadFileToS3 } from '../storage/s3Strategy';
 
@@ -19,6 +24,7 @@ import { initializeAddic7tedService } from '../services/addic7ted/initializeAddi
 import { initializeS3Client } from '../storage/initializeS3Client';
 import { insertSubtitle } from '../db/subtitleRepository';
 import { generateSubtitleUrl } from '../helpers/getSubtitleUrl';
+import { isValidEpisode } from '../helpers/isValidEpisode';
 
 export function subtitlesController(app: Elysia, logger: Logger): Elysia {
   const opensubtitlesService = initializeOpensubtitlesService();
@@ -68,7 +74,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
           }
         },
         {
-          body: SearchOptionsDto,
+          body: searchOptionsDto,
         }
       )
       .post(
@@ -85,35 +91,50 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             imdbId,
             seasonNumber,
             episodeNumber,
-          } = body.featureDetails;
+            comments,
+            language,
+          } = body;
+
+          if (featureType === FeatureType.Episode) {
+            if (!isValidEpisode(body)) {
+              throw new Error(
+                'Feature type is of episode but the season or episode numbers are invalid'
+              );
+            }
+          }
+          const parsedSeasonNumber = parseInt(seasonNumber as string);
+          const parsedEpisodeNumber = parseInt(episodeNumber as string);
+
           const newSubtitle: Subtitle = {
             externalId: uuidv4(),
             provider,
             fileId,
+            comments,
             createdOn: new Date(),
             url: generateSubtitleUrl(fileId),
             releaseName: body.releaseName,
             downloadCount: 0,
+            language,
             featureDetails: {
               featureType,
               year,
               title,
               featureName,
               imdbId,
-              seasonNumber,
-              episodeNumber,
+              seasonNumber: parsedSeasonNumber,
+              episodeNumber: parsedEpisodeNumber,
             },
           };
           try {
+            await uploadFileToS3(s3Client, s3Config, fileId, file);
             insertSubtitle(newSubtitle);
-            uploadFileToS3(s3Client, s3Config, fileId, file);
             set.status = 201;
           } catch (error) {
             logger.error(JSON.stringify(error));
             throw new InternalServerError('Cannot save new subtitle');
           }
         },
-        { body: CreateSubtitleDto }
+        { body: createSubtitleDto }
       )
       .get(
         '/download',
