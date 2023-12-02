@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS feature_details (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   featureType TEXT,
-  year INTEGER,
+  year TEXT,
   title TEXT,
   featureName TEXT,
   imdbId TEXT,
@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS subtitles (
   createdOn TEXT,
   url TEXT,
   releaseName TEXT,
+  language TEXT,
   featureDetailsId INTEGER, -- Foreign key referencing feature_details table
   comments TEXT,
   downloadCount INTEGER,
