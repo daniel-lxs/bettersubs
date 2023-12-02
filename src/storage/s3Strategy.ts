@@ -31,8 +31,6 @@ export async function uploadFileToS3(
     Bucket: config.bucket,
     Key: filename,
     Body: content,
-    ContentType: 'text/plain',
-    ACL: 'private',
   });
 
   try {
