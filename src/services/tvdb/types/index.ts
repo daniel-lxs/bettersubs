@@ -1,2 +1,2 @@
-export * from "./tvdbServiceConfig";
-export * from "./searchResponse";
+export * from './TvdbServiceConfig';
+export * from './SearchResponse';

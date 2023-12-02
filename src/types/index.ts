@@ -1,3 +1,3 @@
-export * from "./subtitle";
-export * from "./featureTypes";
-export * from "./subtitleProviders";
+export * from './Subtitle';
+export * from './FeatureTypes';
+export * from './SubtitleProviders';

@@ -1,5 +1,5 @@
-import { FeatureType } from './featureTypes';
-import { SubtitleProviders } from './subtitleProviders';
+import { FeatureType } from './FeatureTypes';
+import { SubtitleProviders } from './SubtitleProviders';
 
 export interface Subtitle {
   externalId: string;
@@ -12,11 +12,12 @@ export interface Subtitle {
   featureDetails: FeatureDetails;
   comments?: string;
   downloadCount: number;
+  language: string;
 }
 
 export interface FeatureDetails {
   featureType: FeatureType;
-  year: number;
+  year: string;
   title: string;
   featureName: string;
   imdbId: string;

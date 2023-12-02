@@ -1,3 +1,3 @@
-export * from "./searchResponse";
-export * from "./subtitleResponse";
-export * from "./addict7edServiceConfig";
+export * from './SearchResponse';
+export * from './SubtitleResponse';
+export * from './Addict7edServiceConfig';

@@ -7,9 +7,9 @@ import {
   SearchParams,
   SubtitleSearchResponse,
 } from './types';
-import { Subtitle } from '../../types/subtitle';
+import { Subtitle } from '../../types/Subtitle';
 import { FeatureType, SubtitleProviders } from '../../types';
-import { SearchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
+import { searchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
 import objectToRecord from '../../helpers/objectToRecord';
 import getEnvOrThrow from '../../helpers/getOrThrow';
 
@@ -88,7 +88,7 @@ export class OpensubtitlesService {
     return searchResponse.data.map(this.mapSubtitleAttributes);
   }
 
-  async searchSubtitles(searchOptions: SearchOptionsTp): Promise<Subtitle[]> {
+  async searchSubtitles(searchOptions: searchOptionsTp): Promise<Subtitle[]> {
     const headers = this.getHeaders();
     const subtitles: Subtitle[] = [];
 
@@ -193,10 +193,11 @@ export class OpensubtitlesService {
       comments: datum.attributes.comments,
       releaseName: datum.attributes.release,
       downloadCount: datum.attributes.download_count,
+      language: datum.attributes.language,
       featureDetails: {
         featureType:
           datum.attributes.feature_details.feature_type.toLocaleLowerCase() as FeatureType,
-        year: featureDetails.year,
+        year: featureDetails.year.toString(),
         title: featureDetails.title,
         featureName: featureDetails.movie_name,
         imdbId: `tt${featureDetails.imdb_id}`,
