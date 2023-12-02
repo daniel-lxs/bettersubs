@@ -106,8 +106,17 @@ export function findOneByFileId(fileId: string): Subtitle {
   throw new Error('Record not found');
 }
 
-/*export function findManyByImdbId(imdbId: string): Subtitle {
+export function findManyByImdbId(imdbId: string): Subtitle[] {
   const db = getDb();
 
-  const query = db.query(`SELECT * FROM subtitles WHERE imdbId`);
-}*/
+  const query = db.query(`SELECT * FROM subtitles WHERE imdbId = $imdbId`);
+
+  const results = query.all({ $imdbId: imdbId });
+
+  if (results) {
+    return results.filter((result) =>
+      isValidEntity<Subtitle>(result, ['externalId', 'fileId'])
+    ) as Subtitle[];
+  }
+  return [];
+}
