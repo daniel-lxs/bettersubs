@@ -6,7 +6,7 @@ export interface Subtitle {
   provider: SubtitleProviders;
   fileId: string;
   createdOn: Date;
-  url: string;
+  url?: string;
   releaseName: string;
   featureDetailsId?: number;
   featureDetails: FeatureDetails;

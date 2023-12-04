@@ -12,6 +12,7 @@ import { FeatureType, SubtitleProviders } from '../../types';
 import { searchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
 import objectToRecord from '../../helpers/objectToRecord';
 import getEnvOrThrow from '../../helpers/getOrThrow';
+import { generateSubtitleUrl } from '../../helpers/generateSubtitleUrl';
 
 export class OpensubtitlesService {
   private config: OpensubtitlesServiceConfig;
@@ -183,20 +184,21 @@ export class OpensubtitlesService {
   }
 
   private mapSubtitleAttributes(datum: Datum): Subtitle {
-    const featureDetails = datum.attributes.feature_details;
+    const attributes = datum.attributes;
+    const featureDetails = attributes.feature_details;
+
     return {
       externalId: datum.id,
       provider: SubtitleProviders.Opensubtitles,
-      fileId: datum.attributes.subtitle_id,
-      createdOn: datum.attributes.upload_date,
-      url: datum.attributes.url,
-      comments: datum.attributes.comments,
-      releaseName: datum.attributes.release,
-      downloadCount: datum.attributes.download_count,
-      language: datum.attributes.language,
+      fileId: attributes.subtitle_id,
+      createdOn: attributes.upload_date,
+      comments: attributes.comments,
+      releaseName: attributes.release,
+      downloadCount: attributes.download_count,
+      language: attributes.language,
       featureDetails: {
         featureType:
-          datum.attributes.feature_details.feature_type.toLocaleLowerCase() as FeatureType,
+          attributes.feature_details.feature_type.toLocaleLowerCase() as FeatureType,
         year: featureDetails.year.toString(),
         title: featureDetails.title,
         featureName: featureDetails.movie_name,
@@ -209,12 +211,11 @@ export class OpensubtitlesService {
 
   async downloadSubtitle(fileId: string): Promise<string> {
     try {
-      await this.authenticate();
+      //await this.authenticate();
       const { link } = await this.requestDownload(fileId);
 
       const response = await fetch(link, {
         method: 'GET',
-        headers: this.getHeaders(),
       });
 
       if (response.ok) {

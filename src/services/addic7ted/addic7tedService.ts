@@ -8,6 +8,7 @@ import { Subtitle, FeatureType, SubtitleProviders } from '../../types';
 import { TvdbService } from '../tvdb/tvdbService';
 import { searchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
 import { ShowData } from '../tvdb/types';
+import { generateSubtitleUrl } from '../../helpers/generateSubtitleUrl';
 
 export class Addic7edService {
   private config: Addic7edServiceConfig;
@@ -62,7 +63,6 @@ export class Addic7edService {
     const {
       subtitleId,
       version = '',
-      downloadUri,
       discovered: subtitleDiscovered,
       downloadCount,
       language,
@@ -73,7 +73,6 @@ export class Addic7edService {
       provider: SubtitleProviders.Addic7ted,
       fileId: subtitleId,
       createdOn: subtitleDiscovered,
-      url: downloadUri,
       releaseName: version,
       downloadCount: downloadCount,
       language,
