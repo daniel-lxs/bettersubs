@@ -48,7 +48,7 @@ export function insertSubtitle(subtitle: Subtitle) {
       typeof featureDetailsResult !== 'object' ||
       !objectHasId(featureDetailsResult)
     ) {
-      throw new Error('Failed to insert record');
+      throw new Error('Failed to insert feature details record');
     }
     lastId = featureDetailsResult.id;
 

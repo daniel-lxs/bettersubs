@@ -8,7 +8,8 @@ export function initDb() {
   }
 
   try {
-    const query = db.query(`CREATE TABLE IF NOT EXISTS feature_details (
+    const featureDetailsTableQuery =
+      db.prepare(`CREATE TABLE IF NOT EXISTS feature_details (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       featureType TEXT,
       year TEXT,
@@ -17,9 +18,10 @@ export function initDb() {
       imdbId TEXT,
       seasonNumber INTEGER,
       episodeNumber INTEGER
-    );
-    
-    CREATE TABLE IF NOT EXISTS subtitles (
+    );`);
+
+    const subtitlesTableQuery =
+      db.prepare(`CREATE TABLE IF NOT EXISTS subtitles (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       externalId TEXT,
       provider TEXT,
@@ -34,7 +36,11 @@ export function initDb() {
       FOREIGN KEY (featureDetailsId) REFERENCES feature_details(id)
     );`);
 
-    query.run();
+    featureDetailsTableQuery.run();
+    featureDetailsTableQuery.finalize();
+
+    subtitlesTableQuery.run();
+    subtitlesTableQuery.finalize();
     console.log('SQLite database initialized successfully.');
   } catch (error) {
     console.error('Error initializing SQLite database:', error);
