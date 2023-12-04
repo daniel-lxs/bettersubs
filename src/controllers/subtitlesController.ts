@@ -23,7 +23,7 @@ import { initializeAddic7tedService } from '../services/addic7ted/initializeAddi
 
 import { initializeS3Client } from '../storage/initializeS3Client';
 import { insertSubtitle } from '../db/subtitleRepository';
-import { generateSubtitleUrl } from '../helpers/getSubtitleUrl';
+import { generateSubtitleUrl } from '../helpers/generateSubtitleUrl';
 import { isValidEpisode } from '../helpers/isValidEpisode';
 
 export function subtitlesController(app: Elysia, logger: Logger): Elysia {
@@ -51,7 +51,9 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             ).flat();
 
             results.forEach((e) => {
-              e.fileId = `${queryKey};${e.fileId}`;
+              const newFileId = `${queryKey};${e.fileId}`;
+              e.fileId = newFileId;
+              e.url = generateSubtitleUrl(newFileId, e.provider);
             });
 
             cache.set(queryKey, results); //We cache the search to extract metadata later
@@ -111,7 +113,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             fileId,
             comments,
             createdOn: new Date(),
-            url: generateSubtitleUrl(fileId),
+            url: generateSubtitleUrl(fileId, SubtitleProviders.Bettersubs),
             releaseName: body.releaseName,
             downloadCount: 0,
             language,
@@ -126,7 +128,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             },
           };
           try {
-            await uploadFileToS3(s3Client, s3Config, fileId, file);
+            uploadFileToS3(s3Client, s3Config, fileId, file);
             insertSubtitle(newSubtitle);
             set.status = 201;
           } catch (error) {
@@ -142,12 +144,19 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
           const [queryKey, cachedFileId] = fileId.split(';');
           let subtitleFile: string | null = null;
 
+          const responseHeaders = {
+            'Content-Disposition': `attachment; filename=${cachedFileId}.srt`,
+            'Content-Type': 'text/plain',
+          };
+
           try {
             subtitleFile = await getFileFromS3(
               s3Client,
               s3Config,
               cachedFileId
             );
+
+            return new Response(subtitleFile, { headers: responseHeaders });
           } catch (error) {
             logger.info('Subtitle not found in storage');
           }
@@ -187,11 +196,6 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
           //cache.remove(queryKey);
           uploadFileToS3(s3Client, s3Config, cachedFileId, subtitleFile);
           insertSubtitle(subtitleMetadata);
-
-          const responseHeaders = {
-            'Content-Disposition': `attachment; filename=${cachedFileId}.srt`,
-            'Content-Type': 'text/plain',
-          };
 
           return new Response(subtitleFile, { headers: responseHeaders });
         },
