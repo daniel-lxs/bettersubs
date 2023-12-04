@@ -17,7 +17,7 @@ VOLUME /app/db
 COPY src/db/init.sql .
 
 # Create and initialize the SQLite database during the build
-RUN bun sqlite3 /app/db/sqlite.db < init.sql
+RUN sqlite3 /app/db/sqlite.db < init.sql
 
 ENV NODE_ENV production
 CMD ["bun", "src/index.ts"]
