@@ -13,9 +13,6 @@ COPY tsconfig.json .
 # Create a separate volume for the SQLite database
 VOLUME /app/db
 
-# Copy the init script to the working directory
-COPY src/db/init.sql .
-
 # Create and initialize the SQLite database during the build
 RUN bun run init-db
 
