@@ -1,6 +1,6 @@
 import { Database } from 'bun:sqlite';
 
-const db = new Database('./src/db/sqlite.db', { create: true });
+const db = new Database('./src/data/db/sqlite.db', { create: true });
 
 export function getDb(): Database {
   if (!db) {

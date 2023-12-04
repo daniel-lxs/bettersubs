@@ -1,9 +1,4 @@
-import Elysia, {
-  InternalServerError,
-  NotFoundError,
-  ValidationError,
-  t,
-} from 'elysia';
+import Elysia, { InternalServerError, NotFoundError, t } from 'elysia';
 import { v4 as uuidv4 } from 'uuid';
 import Fuse from 'fuse.js';
 
@@ -22,7 +17,7 @@ import { initializeTvdbService } from '../services/tvdb/initializeTvdbService';
 import { initializeAddic7tedService } from '../services/addic7ted/initializeAddic7tedService';
 
 import { initializeS3Client } from '../storage/initializeS3Client';
-import { insertSubtitle } from '../db/subtitleRepository';
+import { insertSubtitle } from '../data/subtitleRepository';
 import { generateSubtitleUrl } from '../helpers/generateSubtitleUrl';
 import { isValidEpisode } from '../helpers/isValidEpisode';
 
