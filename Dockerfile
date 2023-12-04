@@ -10,6 +10,8 @@ RUN bun install --production
 COPY src src
 COPY tsconfig.json .
 
+RUN mkdir src/data/db
+
 # Create and initialize the SQLite database during the build
 RUN bun run init-db
 
