@@ -9,8 +9,6 @@ export function insertSubtitle(subtitle: Subtitle) {
   try {
     const db = getDb();
 
-    console.log('db is good');
-
     const {
       externalId,
       provider,
@@ -32,8 +30,6 @@ export function insertSubtitle(subtitle: Subtitle) {
   RETURNING id
 `);
 
-    console.log('first query created ');
-
     const featureDetailsParams = {
       $featureType: featureDetails.featureType,
       $year: featureDetails.year,
@@ -47,11 +43,6 @@ export function insertSubtitle(subtitle: Subtitle) {
     const featureDetailsResult =
       insertFeatureDetailsQuery.get(featureDetailsParams);
 
-    console.log(
-      'did the query above me run? if so what is this ' +
-        JSON.stringify(featureDetailsResult)
-    );
-
     if (
       !featureDetailsResult ||
       typeof featureDetailsResult !== 'object' ||
@@ -60,8 +51,6 @@ export function insertSubtitle(subtitle: Subtitle) {
       throw new Error('Failed to insert record');
     }
     lastId = featureDetailsResult.id;
-
-    console.log('I AM NOT SURPRISED' + featureDetailsResult);
 
     // Now insert subtitle with the obtained featureDetailsId
     const insertSubtitleQuery = db.query(`
@@ -78,7 +67,7 @@ export function insertSubtitle(subtitle: Subtitle) {
       $provider: provider,
       $fileId: fileId,
       $createdOn: new Date(createdOn).toISOString(),
-      $url: url,
+      $url: url || null,
       $releaseName: releaseName,
       $featureDetailsId: lastId,
       $comments: comments || null,
