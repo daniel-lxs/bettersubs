@@ -1,9 +1,7 @@
-import { Subtitle } from '../types';
+import { FeatureDetails, Subtitle } from '../types';
 import { getDb } from './connection';
-
-function objectHasId(object: Object): object is { id: number } {
-  return object.hasOwnProperty('id');
-}
+import { sql, eq, and } from 'drizzle-orm';
+import { subtitle, featureDetails } from './schema';
 
 export function insertSubtitle(subtitle: Subtitle) {
   try {
@@ -21,60 +19,74 @@ export function insertSubtitle(subtitle: Subtitle) {
       downloadCount,
     } = subtitle;
 
-    // Insert feature details first
-    const insertFeatureDetailsQuery = db.query(`
-  INSERT INTO feature_details (
-    featureType, year, title, featureName, imdbId, seasonNumber, episodeNumber
-  )
-  VALUES ($featureType, $year, $title, $featureName, $imdbId, $seasonNumber, $episodeNumber)
-  RETURNING id
-`);
+    // Check if featureDetails with the given imdbId already exists
+    const checkFeatureDetailsQuery = sql`
+      SELECT id FROM feature_details WHERE imdbId = ${featureDetails.imdbId}
+    `;
 
-    const featureDetailsParams = {
-      $featureType: featureDetails.featureType,
-      $year: featureDetails.year,
-      $title: featureDetails.title,
-      $featureName: featureDetails.featureName,
-      $imdbId: featureDetails.imdbId,
-      $seasonNumber: featureDetails.seasonNumber || null,
-      $episodeNumber: featureDetails.episodeNumber || null,
-    };
-    let lastId: number;
-    const featureDetailsResult =
-      insertFeatureDetailsQuery.get(featureDetailsParams);
+    const existingFeatureDetails = db.get<typeof featureDetails>(
+      checkFeatureDetailsQuery
+    );
+
+    // If featureDetails with the given imdbId already exists, use its id
+    let lastId;
 
     if (
-      !featureDetailsResult ||
-      typeof featureDetailsResult !== 'object' ||
-      !objectHasId(featureDetailsResult)
+      existingFeatureDetails &&
+      isValidEntity<FeatureDetails>(existingFeatureDetails, ['id', 'imdbId'])
     ) {
+      lastId = existingFeatureDetails.id;
+    } else {
+      const {
+        featureType,
+        year,
+        title,
+        featureName,
+        imdbId,
+        seasonNumber,
+        episodeNumber,
+      } = featureDetails;
+
+      const insertFeatureDetailsQuery = sql`
+        INSERT INTO feature_details (
+          featureType, year, title, featureName, imdbId, seasonNumber, episodeNumber
+        )
+        VALUES (${featureType}, ${year}, ${title}, ${featureName}, ${imdbId}, ${
+        seasonNumber || null
+      }, ${episodeNumber || null})
+        RETURNING id
+      `;
+
+      const featureDetailsResult = db.get<typeof featureDetails>(
+        insertFeatureDetailsQuery
+      );
+
+      if (
+        !featureDetailsResult ||
+        typeof featureDetailsResult !== 'object' ||
+        !objectHasId(featureDetailsResult)
+      ) {
+        throw new Error('Failed to insert feature details record');
+      }
+
+      lastId = featureDetailsResult.id;
+    }
+    if (!lastId) {
       throw new Error('Failed to insert feature details record');
     }
-    lastId = featureDetailsResult.id;
 
     // Now insert subtitle with the obtained featureDetailsId
-    const insertSubtitleQuery = db.query(`
+    const insertSubtitleQuery = sql`
    INSERT INTO subtitles (
      externalId, provider, fileId, createdOn, url, releaseName,
      featureDetailsId, comments, downloadCount
    )
-   VALUES ($externalId, $provider, $fileId, $createdOn, $url, $releaseName,
-           $featureDetailsId, $comments, $downloadCount)
- `);
+   VALUES (${externalId}, ${provider}, ${fileId}, ${createdOn}, ${
+      url || null
+    }, ${releaseName}, ${lastId}, ${comments || null}, ${downloadCount})
+ `;
 
-    const subtitleParams = {
-      $externalId: externalId,
-      $provider: provider,
-      $fileId: fileId,
-      $createdOn: new Date(createdOn).toISOString(),
-      $url: url || null,
-      $releaseName: releaseName,
-      $featureDetailsId: lastId,
-      $comments: comments || null,
-      $downloadCount: downloadCount,
-    };
-
-    insertSubtitleQuery.run(subtitleParams);
+    db.run(insertSubtitleQuery);
   } catch (error) {
     throw new Error('Failed to insert record ' + JSON.stringify(error));
   }
@@ -82,30 +94,62 @@ export function insertSubtitle(subtitle: Subtitle) {
 
 export function findOneByFileId(fileId: string): Subtitle {
   const db = getDb();
+  const result = db.select().from(subtitle).where(eq(subtitle.fileId, fileId));
 
-  const query = db.query(`
-    SELECT * FROM subtitles WHERE fileId = $fileId
-  `);
-
-  const result = query.get({ $fileId: fileId });
-
-  if (result && isValidEntity<Subtitle>(result, ['externalId', 'fileId'])) {
-    return result;
+  if (result) {
+    return mapToSubtitle(result);
   }
   throw new Error('Record not found');
 }
 
-export function findManyByImdbId(imdbId: string): Subtitle[] {
+export function findManyByImdbIdAndLang(
+  imdbId: string,
+  language: string
+): Subtitle[] {
   const db = getDb();
+  const result = db
+    .select()
+    .from(subtitle)
+    .leftJoin(featureDetails, eq(subtitle.featureDetails, featureDetails.id))
+    .where(
+      and(eq(subtitle.language, language), eq(featureDetails.imdbId, imdbId))
+    )
+    .values();
 
-  const query = db.query(`SELECT * FROM subtitles WHERE imdbId = $imdbId`);
-
-  const results = query.all({ $imdbId: imdbId });
-
-  if (results) {
-    return results.filter((result) =>
-      isValidEntity<Subtitle>(result, ['externalId', 'fileId'])
-    ) as Subtitle[];
+  if (!result) {
+    return [];
   }
-  return [];
+
+  return result.map(mapToSubtitle);
+}
+
+function mapToSubtitle(result: any): Subtitle {
+  if (
+    !result &&
+    !isValidEntity<typeof subtitle>(result, ['externalId', 'fileId'])
+  ) {
+    throw new Error('Entity is not valid');
+  }
+  return {
+    id: result.id,
+    externalId: result.externalId,
+    provider: result.provider,
+    fileId: result.fileId,
+    createdOn: result.createdOn,
+    url: result.url,
+    releaseName: result.releaseName,
+    comments: result.comments,
+    downloadCount: result.downloadCount,
+    language: result.language,
+    featureDetails: {
+      id: result.featureDetails.id,
+      featureType: result.featureDetails.featureType,
+      year: result.featureDetails.year,
+      title: result.featureDetails.title,
+      featureName: result.featureDetails.featureName,
+      imdbId: result.featureDetails.imdbId,
+      seasonNumber: result.featureDetails.seasonNumber,
+      episodeNumber: result.featureDetails.episodeNumber,
+    },
+  };
 }

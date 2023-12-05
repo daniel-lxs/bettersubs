@@ -2,6 +2,7 @@ import { FeatureType } from './FeatureTypes';
 import { SubtitleProviders } from './SubtitleProviders';
 
 export interface Subtitle {
+  id?: number;
   externalId: string;
   provider: SubtitleProviders;
   fileId: string;
@@ -16,6 +17,7 @@ export interface Subtitle {
 }
 
 export interface FeatureDetails {
+  id?: number;
   featureType: FeatureType;
   year: string;
   title: string;
