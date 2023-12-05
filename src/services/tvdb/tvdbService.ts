@@ -78,7 +78,12 @@ export class TvdbService {
 
       if (result.ok) {
         const responseData = await result.json();
-        return responseData.data[0].series;
+
+        if (responseData.data && responseData.data.length > 0) {
+          return responseData.data[0].series;
+        } else {
+          throw new Error('Show not found');
+        }
       } else {
         throw new Error(`Request failed with status ${result.status}`);
       }
