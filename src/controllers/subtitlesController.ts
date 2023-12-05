@@ -17,7 +17,10 @@ import { initializeTvdbService } from '../services/tvdb/initializeTvdbService';
 import { initializeAddic7tedService } from '../services/addic7ted/initializeAddic7tedService';
 
 import { initializeS3Client } from '../storage/initializeS3Client';
-import { insertSubtitle } from '../data/subtitleRepository';
+import {
+  findManyByImdbIdAndLang,
+  insertSubtitle,
+} from '../data/subtitleRepository';
 import { generateSubtitleUrl } from '../helpers/generateSubtitleUrl';
 import { isValidEpisode } from '../helpers/isValidEpisode';
 
@@ -29,14 +32,15 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
 
   app.group('/subtitle', (app) =>
     app
-      .use(cache())
       .post(
         '/search',
-        async ({ body, cache }) => {
+        async ({ body }) => {
           try {
-            let queryKey = uuidv4();
+            const { imdbId, language } = body;
 
-            const results = (
+            const localResults = findManyByImdbIdAndLang(imdbId, language);
+
+            const externalResults = (
               await Promise.all([
                 opensubtitlesService.searchSubtitles(body),
                 body.featureType === FeatureType.Episode
@@ -45,13 +49,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
               ])
             ).flat();
 
-            results.forEach((e) => {
-              const newFileId = `${queryKey};${e.fileId}`;
-              e.fileId = newFileId;
-              e.url = generateSubtitleUrl(newFileId, e.provider);
-            });
-
-            cache.set(queryKey, results); //We cache the search to extract metadata later
+            const results = [...localResults, ...externalResults];
 
             const fuse = new Fuse(results, {
               keys: ['releaseName', 'comments'],
@@ -135,21 +133,16 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
       )
       .get(
         '/download',
-        async ({ query: { fileId, provider }, cache }) => {
-          const [queryKey, cachedFileId] = fileId.split(';');
+        async ({ query: { fileId, provider } }) => {
           let subtitleFile: string | null = null;
 
           const responseHeaders = {
-            'Content-Disposition': `attachment; filename=${cachedFileId}.srt`,
+            'Content-Disposition': `attachment; filename=${fileId}.srt`,
             'Content-Type': 'text/plain',
           };
 
           try {
-            subtitleFile = await getFileFromS3(
-              s3Client,
-              s3Config,
-              cachedFileId
-            );
+            subtitleFile = await getFileFromS3(s3Client, s3Config, fileId);
 
             return new Response(subtitleFile, { headers: responseHeaders });
           } catch (error) {
@@ -159,13 +152,11 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
           switch (provider) {
             case SubtitleProviders.Opensubtitles:
               subtitleFile = await opensubtitlesService.downloadSubtitle(
-                cachedFileId
+                fileId
               );
               break;
             case SubtitleProviders.Addic7ted:
-              subtitleFile = await addic7edService.downloadSubtitle(
-                cachedFileId
-              );
+              subtitleFile = await addic7edService.downloadSubtitle(fileId);
               break;
           }
 
@@ -173,24 +164,8 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             throw new NotFoundError('Subtitle file not found');
           }
 
-          const subtitleMetadatum: Subtitle[] = cache.get(queryKey);
-
-          if (!subtitleMetadatum) {
-            throw new NotFoundError('Invalid fileId, try searching again');
-          }
-
-          const subtitleMetadata = subtitleMetadatum.find((subtitle) =>
-            subtitle.fileId.includes(cachedFileId)
-          );
-
-          if (!subtitleMetadata) {
-            throw new NotFoundError('Subtitle file not found');
-          }
-
-          subtitleMetadata.fileId = cachedFileId; // Original file id
-          //cache.remove(queryKey);
-          uploadFileToS3(s3Client, s3Config, cachedFileId, subtitleFile);
-          insertSubtitle(subtitleMetadata);
+          uploadFileToS3(s3Client, s3Config, fileId, subtitleFile);
+          //insertSubtitle(subtitleMetadata);
 
           return new Response(subtitleFile, { headers: responseHeaders });
         },
