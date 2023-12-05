@@ -35,11 +35,17 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
         '/search',
         async ({ body }) => {
           try {
-            const { imdbId, language } = body;
+            const { imdbId, language, featureType } = body;
+
+            if (featureType === FeatureType.Episode) {
+              if (!body.episodeNumber || !body.seasonNumber) {
+                throw new Error('Invalid episode');
+              }
+            }
 
             const localResults = findManyByImdbIdAndLang(imdbId, language);
 
-            const externalResults = (
+            const results = (
               await Promise.all([
                 opensubtitlesService.searchSubtitles(body),
                 body.featureType === FeatureType.Episode
@@ -48,7 +54,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
               ])
             ).flat();
 
-            const results = [...localResults, ...externalResults];
+            //const results = [...localResults, ...externalResults];
 
             const fuse = new Fuse(results, {
               keys: ['releaseName', 'comments'],
@@ -57,14 +63,14 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
 
             if (!body.query) {
               results.sort((a, b) => b.downloadCount - a.downloadCount);
-              return results;
+              return [...localResults, ...results];
             }
 
             const fuseResult = fuse.search(body.query);
-            return fuseResult;
+            return [...localResults, ...fuseResult];
           } catch (error) {
-            logger.error(JSON.stringify(error));
-            throw new InternalServerError(`Something went wrong`);
+            logger.error(error);
+            throw new InternalServerError(`Something went wrong: ${error}`);
           }
         },
         {
@@ -124,7 +130,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
             insertSubtitle(newSubtitle);
             set.status = 201;
           } catch (error) {
-            logger.error(JSON.stringify(error));
+            logger.error(error);
             throw new InternalServerError('Cannot save new subtitle');
           }
         },
