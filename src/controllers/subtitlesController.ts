@@ -16,10 +16,7 @@ import { initializeTvdbService } from '../services/tvdb/initializeTvdbService';
 import { initializeAddic7tedService } from '../services/addic7ted/initializeAddic7tedService';
 
 import { initializeS3Client } from '../storage/initializeS3Client';
-import {
-  findManyByImdbIdAndLang,
-  insertSubtitle,
-} from '../data/subtitleRepository';
+import { findSubtitles, insertSubtitle } from '../data/subtitleRepository';
 import { generateSubtitleUrl } from '../helpers/generateSubtitleUrl';
 import { isValidEpisode } from '../helpers/isValidEpisode';
 
@@ -35,7 +32,13 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
         '/search',
         async ({ body }) => {
           try {
-            const { imdbId, language, featureType } = body;
+            const {
+              imdbId,
+              language,
+              featureType,
+              seasonNumber,
+              episodeNumber,
+            } = body;
 
             if (featureType === FeatureType.Episode) {
               if (!body.episodeNumber || !body.seasonNumber) {
@@ -43,7 +46,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
               }
             }
 
-            const localResults = findManyByImdbIdAndLang(imdbId, language);
+            const localResults = findSubtitles(body);
 
             const results = (
               await Promise.all([

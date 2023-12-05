@@ -3,6 +3,7 @@ import { getDb } from './connection';
 import { sql, eq, and } from 'drizzle-orm';
 import { subtitle, featureDetails } from './schema';
 import { objectHasId } from '../helpers/objectHasId';
+import { searchOptionsTp } from '../controllers/dtos';
 
 export function insertSubtitle(subtitle: Subtitle) {
   try {
@@ -104,25 +105,39 @@ export function findOneByFileId(fileId: string): Subtitle {
   throw new Error('Record not found');
 }
 //TODO Add pagination
-export function findManyByImdbIdAndLang(
-  imdbId: string,
-  language: string
-): Subtitle[] {
-  const db = getDb();
-  const result = db
-    .select()
-    .from(subtitle)
-    .leftJoin(featureDetails, eq(subtitle.featureDetails, featureDetails.id))
-    .where(
-      and(eq(subtitle.language, language), eq(featureDetails.imdbId, imdbId))
-    )
-    .values();
+export function findSubtitles(searchOptions: searchOptionsTp): Subtitle[] {
+  try {
+    const { language, imdbId, episodeNumber, seasonNumber } = searchOptions;
+    const db = getDb();
+    const query = db
+      .select()
+      .from(subtitle)
+      .leftJoin(featureDetails, eq(subtitle.featureDetails, featureDetails.id))
+      .where(
+        and(
+          eq(subtitle.language, language),
+          eq(featureDetails.imdbId, imdbId),
+          episodeNumber
+            ? eq(featureDetails.episodeNumber, episodeNumber)
+            : undefined,
+          seasonNumber
+            ? eq(featureDetails.seasonNumber, seasonNumber)
+            : undefined
+        )
+      );
 
-  if (!result) {
-    return [];
+    const result = query.all();
+
+    if (!result) {
+      return [];
+    }
+
+    const subtitles = result.map(mapToSubtitle);
+    return subtitles;
+  } catch (error) {
+    console.debug('Error:' + error);
+    throw new Error('Subtitle not found ' + JSON.stringify(error));
   }
-
-  return result.map(mapToSubtitle);
 }
 
 //TODO Add download count update
@@ -130,30 +145,31 @@ export function findManyByImdbIdAndLang(
 function mapToSubtitle(result: any): Subtitle {
   if (
     !result &&
-    !isValidEntity<typeof subtitle>(result, ['externalId', 'fileId'])
+    !isValidEntity<typeof subtitle>(result, ['id', 'externalId', 'fileId'])
   ) {
     throw new Error('Entity is not valid');
   }
+  const { subtitles, feature_details } = result;
   return {
-    id: result.id,
-    externalId: result.externalId,
-    provider: result.provider,
-    fileId: result.fileId,
-    createdOn: result.createdOn,
-    url: result.url,
-    releaseName: result.releaseName,
-    comments: result.comments,
-    downloadCount: result.downloadCount,
-    language: result.language,
+    id: subtitles.id,
+    externalId: subtitles.externalId,
+    provider: subtitles.provider,
+    fileId: subtitles.fileId,
+    createdOn: subtitles.createdOn,
+    url: subtitles.url,
+    releaseName: subtitles.releaseName,
+    comments: subtitles.comments,
+    downloadCount: subtitles.downloadCount,
+    language: subtitles.language,
     featureDetails: {
-      id: result.featureDetails.id,
-      featureType: result.featureDetails.featureType,
-      year: result.featureDetails.year,
-      title: result.featureDetails.title,
-      featureName: result.featureDetails.featureName,
-      imdbId: result.featureDetails.imdbId,
-      seasonNumber: result.featureDetails.seasonNumber,
-      episodeNumber: result.featureDetails.episodeNumber,
+      id: feature_details.id,
+      featureType: feature_details.featureType,
+      year: feature_details.year,
+      title: feature_details.title,
+      featureName: feature_details.featureName,
+      imdbId: feature_details.imdbId,
+      seasonNumber: feature_details.seasonNumber,
+      episodeNumber: feature_details.episodeNumber,
     },
   };
 }
