@@ -8,7 +8,6 @@ import { createSubtitleDto, searchOptionsDto } from './dtos';
 import { getFileFromS3, uploadFileToS3 } from '../storage/s3Strategy';
 
 import { Logger } from 'logging';
-import cache from '../helpers/cache';
 
 import { initializeOpensubtitlesService } from '../services/opensubtitles/initializeOpensubtitlesService';
 
