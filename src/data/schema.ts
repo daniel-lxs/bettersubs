@@ -1,7 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
-export const subtitle = sqliteTable('subtitle', {
+export const subtitle = sqliteTable('subtitles', {
   id: integer('id').primaryKey(),
   externalId: text('externalId'),
   provider: text('provider'),

@@ -2,6 +2,7 @@ import { FeatureDetails, Subtitle } from '../types';
 import { getDb } from './connection';
 import { sql, eq, and } from 'drizzle-orm';
 import { subtitle, featureDetails } from './schema';
+import { objectHasId } from '../helpers/objectHasId';
 
 export function insertSubtitle(subtitle: Subtitle) {
   try {
@@ -16,7 +17,7 @@ export function insertSubtitle(subtitle: Subtitle) {
       releaseName,
       featureDetails,
       comments,
-      downloadCount,
+      language,
     } = subtitle;
 
     // Check if featureDetails with the given imdbId already exists
@@ -29,7 +30,7 @@ export function insertSubtitle(subtitle: Subtitle) {
     );
 
     // If featureDetails with the given imdbId already exists, use its id
-    let lastId;
+    let lastId: number | undefined;
 
     if (
       existingFeatureDetails &&
@@ -57,7 +58,7 @@ export function insertSubtitle(subtitle: Subtitle) {
         RETURNING id
       `;
 
-      const featureDetailsResult = db.get<typeof featureDetails>(
+      const featureDetailsResult = db.get<{ id: number }>(
         insertFeatureDetailsQuery
       );
 
@@ -75,19 +76,20 @@ export function insertSubtitle(subtitle: Subtitle) {
       throw new Error('Failed to insert feature details record');
     }
 
-    // Now insert subtitle with the obtained featureDetailsId
+    // Now insert subtitle with the obtained featureDetails
     const insertSubtitleQuery = sql`
    INSERT INTO subtitles (
      externalId, provider, fileId, createdOn, url, releaseName,
-     featureDetailsId, comments, downloadCount
+     featureDetailsId, comments, language, downloadCount
    )
-   VALUES (${externalId}, ${provider}, ${fileId}, ${createdOn}, ${
+   VALUES (${externalId}, ${provider}, ${fileId}, ${createdOn.getTime()}, ${
       url || null
-    }, ${releaseName}, ${lastId}, ${comments || null}, ${downloadCount})
+    }, ${releaseName}, ${lastId}, ${comments || null}, ${language}, ${0})
  `;
 
     db.run(insertSubtitleQuery);
   } catch (error) {
+    console.log(error);
     throw new Error('Failed to insert record ' + JSON.stringify(error));
   }
 }
@@ -101,7 +103,7 @@ export function findOneByFileId(fileId: string): Subtitle {
   }
   throw new Error('Record not found');
 }
-
+//TODO Add pagination
 export function findManyByImdbIdAndLang(
   imdbId: string,
   language: string
@@ -122,6 +124,8 @@ export function findManyByImdbIdAndLang(
 
   return result.map(mapToSubtitle);
 }
+
+//TODO Add download count update
 
 function mapToSubtitle(result: any): Subtitle {
   if (
