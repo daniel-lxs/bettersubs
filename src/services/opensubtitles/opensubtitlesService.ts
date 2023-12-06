@@ -15,11 +15,16 @@ import objectToRecord from '../../helpers/objectToRecord';
 export class OpensubtitlesService {
   private config: OpensubtitlesServiceConfig;
   private token: string;
+  private remainingRequests: number;
+  private rateLimitRemainingSeconds: number;
 
   constructor(config: OpensubtitlesServiceConfig) {
     this.config = config;
     this.token = '';
-    //this.authenticate();
+
+    //Rate limiter
+    this.remainingRequests = 5;
+    this.rateLimitRemainingSeconds = 0;
   }
 
   private getHeaders(): Record<string, string> {
@@ -46,6 +51,22 @@ export class OpensubtitlesService {
     }
   }
 
+  private updateRateLimit(headers: Headers) {
+    if (!headers) return;
+
+    const ratelimitRemaining = headers.get('ratelimit-remaining');
+    const ratelimitLimitSecond = headers.get('x-ratelimit-limit-second');
+
+    if (!ratelimitRemaining) return;
+    if (!ratelimitLimitSecond) return;
+
+    this.remainingRequests = parseInt(ratelimitRemaining);
+    this.rateLimitRemainingSeconds = parseInt(ratelimitLimitSecond);
+  }
+  private isRateLimited(): boolean {
+    return this.remainingRequests <= 0;
+  }
+
   private async authenticate(): Promise<void> {
     if (this.isTokenExpired()) {
       const headers = this.getHeaders();
@@ -56,11 +77,18 @@ export class OpensubtitlesService {
       };
 
       try {
+        if (this.isRateLimited()) {
+          await new Promise((resolve) => {
+            setTimeout(resolve, this.rateLimitRemainingSeconds);
+          });
+        }
         const response = await fetch(`${this.config.apiUrl}/login`, {
           method: 'POST',
           headers,
           body: JSON.stringify(loginRequestData),
         });
+
+        this.updateRateLimit(response.headers);
 
         if (response.ok) {
           const responseData = (await response.json()) as AuthResponse;
@@ -113,10 +141,18 @@ export class OpensubtitlesService {
         this.config.apiUrl
       }/subtitles?${new URLSearchParams(searchParamsRecord)}`;
 
+      if (this.isRateLimited()) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, this.rateLimitRemainingSeconds);
+        });
+      }
+
       const response = await fetch(urlWithParams, {
         method: 'GET',
         headers,
       });
+
+      this.updateRateLimit(response.headers);
 
       if (response.ok) {
         const responseData = await response.json();
@@ -146,11 +182,19 @@ export class OpensubtitlesService {
     };
 
     try {
+      if (this.isRateLimited()) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, this.rateLimitRemainingSeconds);
+        });
+      }
+
       const response = await fetch(`${this.config.apiUrl}/download`, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestData),
       });
+
+      this.updateRateLimit(response.headers);
 
       if (response.ok) {
         return response.json() as Promise<DownloadRequestResponse>;
@@ -196,9 +240,17 @@ export class OpensubtitlesService {
       //await this.authenticate();
       const { link } = await this.requestDownload(fileId);
 
+      if (this.isRateLimited()) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, this.rateLimitRemainingSeconds);
+        });
+      }
+
       const response = await fetch(link, {
         method: 'GET',
       });
+
+      this.updateRateLimit(response.headers);
 
       if (response.ok) {
         return response.text();
