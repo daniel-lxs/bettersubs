@@ -7,7 +7,7 @@ import { createSubtitleDto, searchOptionsDto } from './dtos';
 
 import { getFileFromS3, uploadFileToS3 } from '../storage/s3Strategy';
 
-import { Logger } from 'logging';
+import createLogger from 'logging';
 
 import { initializeOpensubtitlesService } from '../services/opensubtitles/initializeOpensubtitlesService';
 
@@ -20,11 +20,13 @@ import { findSubtitles, insertSubtitle } from '../data/subtitleRepository';
 import { generateSubtitleUrl } from '../helpers/generateSubtitleUrl';
 import { isValidEpisode } from '../helpers/isValidEpisode';
 
-export function subtitlesController(app: Elysia, logger: Logger): Elysia {
+export function subtitlesController(app: Elysia): Elysia {
   const opensubtitlesService = initializeOpensubtitlesService();
   const tvdbService = initializeTvdbService();
   const addic7edService = initializeAddic7tedService(tvdbService);
   const { s3Client, s3Config } = initializeS3Client();
+
+  const logger = createLogger('SubtitleController');
 
   app.group('/subtitle', (app) =>
     app
@@ -32,13 +34,7 @@ export function subtitlesController(app: Elysia, logger: Logger): Elysia {
         '/search',
         async ({ body }) => {
           try {
-            const {
-              imdbId,
-              language,
-              featureType,
-              seasonNumber,
-              episodeNumber,
-            } = body;
+            const { featureType } = body;
 
             if (featureType === FeatureType.Episode) {
               if (!body.episodeNumber || !body.seasonNumber) {
