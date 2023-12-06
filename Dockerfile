@@ -12,8 +12,7 @@ COPY tsconfig.json .
 
 RUN mkdir src/data/db
 
-# Create and initialize the SQLite database during the build
-RUN bun run init-db
+RUN bun run migrations
 
 ENV NODE_ENV production
 CMD ["bun", "src/index.ts"]
