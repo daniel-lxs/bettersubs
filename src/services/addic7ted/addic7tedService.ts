@@ -1,3 +1,4 @@
+import createLogger from 'logging';
 import {
   SearchResponse,
   SubtitleResponse,
@@ -8,7 +9,8 @@ import { Subtitle, FeatureType, SubtitleProviders } from '../../types';
 import { TvdbService } from '../tvdb/tvdbService';
 import { searchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
 import { ShowData } from '../tvdb/types';
-import { generateSubtitleUrl } from '../../helpers/generateSubtitleUrl';
+
+const logger = createLogger('Addic7edService');
 
 export class Addic7edService {
   private config: Addic7edServiceConfig;

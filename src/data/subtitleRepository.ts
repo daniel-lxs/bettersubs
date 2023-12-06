@@ -1,9 +1,13 @@
+import { sql, eq, and } from 'drizzle-orm';
+import createLogger from 'logging';
+
 import { FeatureDetails, Subtitle } from '../types';
 import { getDb } from './connection';
-import { sql, eq, and } from 'drizzle-orm';
 import { subtitle, featureDetails } from './schema';
 import { objectHasId } from '../helpers/objectHasId';
 import { searchOptionsTp } from '../controllers/dtos';
+
+const logger = createLogger('subtitleRepository');
 
 export function insertSubtitle(subtitle: Subtitle) {
   try {
@@ -68,12 +72,14 @@ export function insertSubtitle(subtitle: Subtitle) {
         typeof featureDetailsResult !== 'object' ||
         !objectHasId(featureDetailsResult)
       ) {
+        logger.error('Failed to insert feature details record');
         throw new Error('Failed to insert feature details record');
       }
 
       lastId = featureDetailsResult.id;
     }
     if (!lastId) {
+      logger.error('Failed to insert feature details record');
       throw new Error('Failed to insert feature details record');
     }
 
@@ -90,7 +96,7 @@ export function insertSubtitle(subtitle: Subtitle) {
 
     db.run(insertSubtitleQuery);
   } catch (error) {
-    console.log(error);
+    logger.error(error);
     throw new Error('Failed to insert record ' + JSON.stringify(error));
   }
 }
@@ -102,6 +108,7 @@ export function findOneByFileId(fileId: string): Subtitle {
   if (result) {
     return mapToSubtitle(result);
   }
+  logger.error('Record not found');
   throw new Error('Record not found');
 }
 //TODO Add pagination
@@ -135,7 +142,7 @@ export function findSubtitles(searchOptions: searchOptionsTp): Subtitle[] {
     const subtitles = result.map(mapToSubtitle);
     return subtitles;
   } catch (error) {
-    console.debug('Error:' + error);
+    logger.error(error);
     throw new Error('Subtitle not found ' + JSON.stringify(error));
   }
 }
@@ -147,6 +154,7 @@ function mapToSubtitle(result: any): Subtitle {
     !result &&
     !isValidEntity<typeof subtitle>(result, ['id', 'externalId', 'fileId'])
   ) {
+    logger.error('Entity is not valid');
     throw new Error('Entity is not valid');
   }
   const { subtitles, feature_details } = result;
