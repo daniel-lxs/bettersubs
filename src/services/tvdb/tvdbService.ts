@@ -1,6 +1,13 @@
 import jwt from 'jsonwebtoken';
-import { TvdbServiceConfig, ShowData } from './types';
-import getEnvOrThrow from '../../helpers/getOrThrow';
+import {
+  TvdbServiceConfig,
+  SearchResponse,
+  MovieDatum,
+  ShowDatum,
+  MovieSearchResult,
+  ShowSearchResult,
+} from './types';
+import { FeatureType } from '../../types';
 
 export class TvdbService {
   private config: TvdbServiceConfig;
@@ -63,7 +70,7 @@ export class TvdbService {
     }
   }
 
-  async getShowByIMDBId(imdbId: string): Promise<ShowData> {
+  async getFeatureByImdbId(imdbId: string): Promise<SearchResponse> {
     await this.authenticate();
     const apiUrl = this.config.apiUrl;
 
@@ -77,12 +84,13 @@ export class TvdbService {
       });
 
       if (result.ok) {
-        const responseData = await result.json();
+        const responseData: Omit<SearchResponse, 'featureType'> =
+          await result.json();
 
         if (responseData.data && responseData.data.length > 0) {
-          return responseData.data[0].series;
+          return this.getSearchResultFeatureType(responseData);
         } else {
-          throw new Error('Show not found');
+          throw new Error('Feature not found');
         }
       } else {
         throw new Error(`Request failed with status ${result.status}`);
@@ -94,12 +102,23 @@ export class TvdbService {
       throw error;
     }
   }
-}
-
-function initializeTvdbService(): TvdbService {
-  const tvdbService = new TvdbService({
-    apiUrl: getEnvOrThrow('TVDB_API_URL'),
-    apiKey: getEnvOrThrow('TVDB_API_KEY'),
-  });
-  return tvdbService;
+  getSearchResultFeatureType(
+    searchResponse: Omit<SearchResponse, 'featureType'>
+  ): MovieSearchResult | ShowSearchResult {
+    if (
+      (searchResponse as MovieSearchResult).data[0].movie.name !== undefined
+    ) {
+      return {
+        featureType: FeatureType.Movie,
+        status: searchResponse.status,
+        data: searchResponse.data as MovieDatum[],
+      };
+    } else {
+      return {
+        featureType: FeatureType.Episode,
+        status: searchResponse.status,
+        data: searchResponse.data as ShowDatum[],
+      };
+    }
+  }
 }

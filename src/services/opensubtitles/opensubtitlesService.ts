@@ -121,9 +121,12 @@ export class OpensubtitlesService {
       const searchParams: SearchParams = {
         imdb_id: searchOptions.imdbId.split('tt')[1],
         languages: searchOptions.language,
-        type: searchOptions.featureType,
         page: '1', //Search first page for now
       };
+
+      if (searchOptions.featureType) {
+        searchParams.type = searchOptions.featureType;
+      }
 
       if (searchOptions.featureType === FeatureType.Episode) {
         if (!searchOptions.seasonNumber || !searchOptions.episodeNumber) {

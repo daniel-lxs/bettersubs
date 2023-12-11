@@ -1,9 +1,23 @@
-export interface SearchResult {
+import { FeatureType } from '../../../types';
+
+export type SearchResponse = ShowSearchResult | MovieSearchResult;
+
+export interface ShowSearchResult {
+  featureType: FeatureType.Episode;
   status: string;
-  data: Datum[];
+  data: ShowDatum[];
+}
+export interface MovieSearchResult {
+  featureType: FeatureType.Movie;
+  status: string;
+  data: MovieDatum[];
 }
 
-export interface Datum {
+export interface MovieDatum {
+  movie: MovieData;
+}
+
+export interface ShowDatum {
   series: ShowData;
 }
 
@@ -28,6 +42,21 @@ export interface ShowData {
   averageRuntime: number;
   episodes: null;
   overview: string;
+  year: string;
+}
+
+export interface MovieData {
+  aliases: Alias[];
+  id: number;
+  image: string;
+  lastUpdated: string;
+  name: string;
+  nameTranslations: string[];
+  overviewTranslations: string[];
+  score: number;
+  slug: string;
+  status: Status;
+  runtime: number;
   year: string;
 }
 

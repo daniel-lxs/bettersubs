@@ -34,11 +34,17 @@ export function subtitlesController(app: Elysia): Elysia {
         '/search',
         async ({ body }) => {
           try {
-            const { featureType } = body;
+            let featureType: FeatureType | undefined = body.featureType;
+            if (!featureType) {
+              featureType = (await tvdbService.getFeatureByImdbId(body.imdbId))
+                .featureType;
+            }
 
             if (featureType === FeatureType.Episode) {
               if (!body.episodeNumber || !body.seasonNumber) {
-                throw new Error('Invalid episode');
+                throw new Error(
+                  'Cannot complete request: You provided a show with an invalid season or episode'
+                );
               }
             }
 
@@ -47,13 +53,11 @@ export function subtitlesController(app: Elysia): Elysia {
             const results = (
               await Promise.all([
                 opensubtitlesService.searchSubtitles(body),
-                body.featureType === FeatureType.Episode
+                featureType === FeatureType.Episode
                   ? addic7edService.searchSubtitles(body)
                   : Promise.resolve([]),
               ])
             ).flat();
-
-            //const results = [...localResults, ...externalResults];
 
             const fuse = new Fuse(results, {
               keys: ['releaseName', 'comments'],
@@ -83,10 +87,7 @@ export function subtitlesController(app: Elysia): Elysia {
           const fileId = uuidv4();
           const provider = SubtitleProviders.Bettersubs;
           const {
-            featureType,
-            year,
-            title,
-            featureName,
+            releaseName,
             imdbId,
             seasonNumber,
             episodeNumber,
@@ -94,36 +95,66 @@ export function subtitlesController(app: Elysia): Elysia {
             language,
           } = body;
 
+          const { featureType, data: featureData } =
+            await tvdbService.getFeatureByImdbId(imdbId);
+
+          let newSubtitle: Subtitle;
+
           if (featureType === FeatureType.Episode) {
             if (!isValidEpisode(body)) {
               throw new Error(
                 'Feature type is of episode but the season or episode numbers are invalid'
               );
             }
-          }
-          const parsedSeasonNumber = parseInt(seasonNumber as string);
-          const parsedEpisodeNumber = parseInt(episodeNumber as string);
 
-          const newSubtitle: Subtitle = {
-            externalId: uuidv4(),
-            provider,
-            fileId,
-            comments,
-            createdOn: new Date(),
-            url: generateSubtitleUrl(fileId, SubtitleProviders.Bettersubs),
-            releaseName: body.releaseName,
-            downloadCount: 0,
-            language,
-            featureDetails: {
-              featureType,
-              year,
-              title,
-              featureName,
-              imdbId,
-              seasonNumber: parsedSeasonNumber,
-              episodeNumber: parsedEpisodeNumber,
-            },
-          };
+            const { year, name } = featureData[0].series;
+
+            const parsedSeasonNumber = parseInt(seasonNumber as string);
+            const parsedEpisodeNumber = parseInt(episodeNumber as string);
+
+            newSubtitle = {
+              externalId: uuidv4(),
+              provider,
+              fileId,
+              comments,
+              createdOn: new Date(),
+              url: generateSubtitleUrl(fileId, SubtitleProviders.Bettersubs),
+              releaseName: releaseName,
+              downloadCount: 0,
+              language,
+              featureDetails: {
+                featureType,
+                year,
+                title: name,
+                featureName: `${name} S${parsedSeasonNumber}E${parsedEpisodeNumber} (${year})`,
+                imdbId,
+                seasonNumber: parsedSeasonNumber,
+                episodeNumber: parsedEpisodeNumber,
+              },
+            };
+          } else {
+            const { year, name } = featureData[0].movie;
+
+            newSubtitle = {
+              externalId: uuidv4(),
+              provider,
+              fileId,
+              comments,
+              createdOn: new Date(),
+              url: generateSubtitleUrl(fileId, SubtitleProviders.Bettersubs),
+              releaseName: releaseName,
+              downloadCount: 0,
+              language,
+              featureDetails: {
+                featureType,
+                year,
+                title: name,
+                featureName: `${name} (${year})`,
+                imdbId,
+              },
+            };
+          }
+
           try {
             uploadFileToS3(s3Client, s3Config, fileId, file);
             insertSubtitle(newSubtitle);
