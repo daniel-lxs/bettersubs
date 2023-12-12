@@ -23,14 +23,14 @@ export const subtitleRelations = relations(subtitle, ({ one }) => ({
 }));
 
 export const featureDetails = sqliteTable('feature_details', {
-  id: integer('id').primaryKey(),
+  seasonNumber: integer('seasonNumber'),
+  episodeNumber: integer('episodeNumber'),
   featureType: text('featureType'),
   year: text('year'),
   title: text('title'),
   featureName: text('featureName'),
   imdbId: text('imdbId'),
-  seasonNumber: integer('seasonNumber'),
-  episodeNumber: integer('episodeNumber'),
+  id: integer('id').primaryKey(), //For some reason the last column is not returned on queries
 });
 
 export const featureDetailsRelations = relations(
