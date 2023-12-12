@@ -5,6 +5,7 @@ import { FeatureDetails, Subtitle } from '../types';
 import { getDb } from './connection';
 import { subtitle, featureDetails } from './schema';
 import { objectHasId } from '../helpers/objectHasId';
+import { isValidEntity } from '../helpers/isValidEntity';
 import { searchOptionsTp } from '../controllers/dtos';
 
 const logger = createLogger('subtitleRepository');
@@ -111,11 +112,13 @@ export function findOneByFileId(fileId: string): Subtitle {
   logger.error('Record not found');
   throw new Error('Record not found');
 }
-//TODO Add pagination
 export function findSubtitles(searchOptions: searchOptionsTp): Subtitle[] {
   try {
+    logger.info('findSubtitles: ' + JSON.stringify(searchOptions));
+
     const { language, imdbId, episodeNumber, seasonNumber } = searchOptions;
     const db = getDb();
+
     const query = db
       .select()
       .from(subtitle)
@@ -124,26 +127,26 @@ export function findSubtitles(searchOptions: searchOptionsTp): Subtitle[] {
         and(
           eq(subtitle.language, language),
           eq(featureDetails.imdbId, imdbId),
-          episodeNumber
-            ? eq(featureDetails.episodeNumber, episodeNumber)
-            : undefined,
-          seasonNumber
-            ? eq(featureDetails.seasonNumber, seasonNumber)
-            : undefined
+          ...(episodeNumber
+            ? [eq(featureDetails.episodeNumber, episodeNumber)]
+            : []),
+          ...(seasonNumber
+            ? [eq(featureDetails.seasonNumber, seasonNumber)]
+            : [])
         )
       );
 
     const result = query.all();
 
-    if (!result) {
-      return [];
-    }
+    logger.info('Query result: ' + JSON.stringify(result));
+
+    if (!result) return [];
 
     const subtitles = result.map(mapToSubtitle);
     return subtitles;
   } catch (error) {
     logger.error(error);
-    throw new Error('Subtitle not found ' + JSON.stringify(error));
+    throw new Error('Subtitle not found: ' + JSON.stringify(error));
   }
 }
 
