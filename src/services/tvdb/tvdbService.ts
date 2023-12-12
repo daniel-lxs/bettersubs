@@ -106,6 +106,8 @@ export class TvdbService {
     searchResponse: Omit<SearchResponse, 'featureType'>
   ): MovieSearchResult | ShowSearchResult {
     if (
+      searchResponse.data[0] &&
+      (searchResponse as MovieSearchResult).data[0].movie &&
       (searchResponse as MovieSearchResult).data[0].movie.name !== undefined
     ) {
       return {
