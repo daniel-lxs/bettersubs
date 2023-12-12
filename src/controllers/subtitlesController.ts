@@ -5,7 +5,11 @@ import Fuse from 'fuse.js';
 import { FeatureType, Subtitle, SubtitleProviders } from '../types';
 import { createSubtitleDto, searchOptionsDto } from './dtos';
 
-import { getFileFromS3, uploadFileToS3 } from '../storage/s3Strategy';
+import {
+  getFileFromS3,
+  getFileFromS3OrThrow,
+  uploadFileToS3,
+} from '../storage/s3Strategy';
 
 import createLogger from 'logging';
 
@@ -83,7 +87,7 @@ export function subtitlesController(app: Elysia): Elysia {
       .post(
         '/create',
         async ({ body, set }) => {
-          const file = await body.file.text();
+          const uploadedFile = await body.file.text();
           const fileId = uuidv4();
           const provider = SubtitleProviders.Bettersubs;
           const {
@@ -156,7 +160,8 @@ export function subtitlesController(app: Elysia): Elysia {
           }
 
           try {
-            uploadFileToS3(s3Client, s3Config, fileId, file);
+            //TODO: Prevent duplicates
+            uploadFileToS3(s3Client, s3Config, fileId, uploadedFile);
             insertSubtitle(newSubtitle);
             set.status = 201;
           } catch (error) {
@@ -177,7 +182,12 @@ export function subtitlesController(app: Elysia): Elysia {
           };
 
           try {
-            subtitleFile = await getFileFromS3(s3Client, s3Config, fileId);
+            subtitleFile = await getFileFromS3OrThrow(
+              s3Client,
+              s3Config,
+              fileId,
+              true
+            );
 
             return new Response(subtitleFile, { headers: responseHeaders });
           } catch (error) {
