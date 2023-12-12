@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import createLogger from 'logging';
 import {
   AuthResponse,
   Datum,
@@ -11,6 +12,8 @@ import { Subtitle } from '../../types/Subtitle';
 import { FeatureType, SubtitleProviders } from '../../types';
 import { searchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
 import objectToRecord from '../../helpers/objectToRecord';
+
+const logger = createLogger('OpensubtitlesService');
 
 export class OpensubtitlesService {
   private config: OpensubtitlesServiceConfig;
@@ -161,13 +164,12 @@ export class OpensubtitlesService {
         const responseData = await response.json();
         return this.mapSearchResponseToSubtitle(responseData);
       } else {
-        throw new Error(`Request failed with status ${response.status}`);
+        logger.error(`Request failed with status ${response.status}`);
+        return [];
       }
     } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      }
-      throw error;
+      logger.error(error);
+      return [];
     }
   }
 

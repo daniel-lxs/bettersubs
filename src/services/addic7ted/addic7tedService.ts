@@ -92,37 +92,44 @@ export class Addic7edService {
   }
 
   async searchSubtitles(searchOptions: searchOptionsTp): Promise<Subtitle[]> {
-    const { featureType, data: tvdbShowData } =
-      await this.tvdbService.getFeatureByImdbId(searchOptions.imdbId);
+    try {
+      const { featureType, data: tvdbShowData } =
+        await this.tvdbService.getFeatureByImdbId(searchOptions.imdbId);
 
-    if (
-      !tvdbShowData ||
-      tvdbShowData.length === 0 ||
-      featureType !== FeatureType.Episode
-    ) {
+      if (
+        !tvdbShowData ||
+        tvdbShowData.length === 0 ||
+        featureType !== FeatureType.Episode
+      ) {
+        return [];
+      }
+
+      const addic7edShowData = await this.getShowByTvdbId(
+        tvdbShowData[0].series.id.toString()
+      );
+
+      if (!searchOptions.seasonNumber || !searchOptions.episodeNumber) {
+        throw new Error(
+          'Cannot complete request: season or episode are missing'
+        );
+      }
+
+      const subtitleResponse = await this.fetchSubtitleResponse(
+        addic7edShowData.id,
+        searchOptions.seasonNumber,
+        searchOptions.episodeNumber,
+        searchOptions.language,
+        searchOptions.imdbId,
+        tvdbShowData[0].series
+      );
+
+      const mappedSubtitles =
+        this.mapSubtitleResponseToSubtitle(subtitleResponse);
+      return mappedSubtitles;
+    } catch (error) {
+      logger.error(error);
       return [];
     }
-
-    const addic7edShowData = await this.getShowByTvdbId(
-      tvdbShowData[0].series.id.toString()
-    );
-
-    if (!searchOptions.seasonNumber || !searchOptions.episodeNumber) {
-      throw new Error('Cannot complete request: season or episode are missing');
-    }
-
-    const subtitleResponse = await this.fetchSubtitleResponse(
-      addic7edShowData.id,
-      searchOptions.seasonNumber,
-      searchOptions.episodeNumber,
-      searchOptions.language,
-      searchOptions.imdbId,
-      tvdbShowData[0].series
-    );
-
-    const mappedSubtitles =
-      this.mapSubtitleResponseToSubtitle(subtitleResponse);
-    return mappedSubtitles;
   }
 
   private async fetchSubtitleResponse(
