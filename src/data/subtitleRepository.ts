@@ -3,7 +3,7 @@ import createLogger from 'logging';
 
 import { FeatureDetails, Subtitle } from '../types';
 import { getDb } from './connection';
-import { subtitle, featureDetails } from './schema';
+import { subtitleModel, featureDetailsModel } from './schema';
 import { objectHasId } from '../helpers/objectHasId';
 import { isValidEntity } from '../helpers/isValidEntity';
 import { searchOptionsTp } from '../controllers/dtos';
@@ -21,19 +21,36 @@ export function insertSubtitle(subtitle: Subtitle) {
       createdOn,
       url,
       releaseName,
-      featureDetails,
+      featureDetails: {
+        featureType,
+        year,
+        title,
+        featureName,
+        imdbId,
+        seasonNumber,
+        episodeNumber,
+      },
       comments,
       language,
     } = subtitle;
 
-    // Check if featureDetails with the given imdbId already exists
-    const checkFeatureDetailsQuery = sql`
-      SELECT id FROM feature_details WHERE imdbId = ${featureDetails.imdbId}
-    `;
+    const checkFeatureDetailsQuery = db
+      .select()
+      .from(featureDetailsModel)
+      .where(
+        and(
+          eq(featureDetailsModel.imdbId, imdbId),
+          ...(episodeNumber
+            ? [eq(featureDetailsModel.episodeNumber, episodeNumber)]
+            : []),
+          ...(seasonNumber
+            ? [eq(featureDetailsModel.seasonNumber, seasonNumber)]
+            : [])
+        )
+      );
 
-    const existingFeatureDetails = db.get<typeof featureDetails>(
-      checkFeatureDetailsQuery
-    );
+    //For some reason get doesn't work
+    const [existingFeatureDetails] = checkFeatureDetailsQuery.all();
 
     // If featureDetails with the given imdbId already exists, use its id
     let lastId: number | undefined;
@@ -44,16 +61,6 @@ export function insertSubtitle(subtitle: Subtitle) {
     ) {
       lastId = existingFeatureDetails.id;
     } else {
-      const {
-        featureType,
-        year,
-        title,
-        featureName,
-        imdbId,
-        seasonNumber,
-        episodeNumber,
-      } = featureDetails;
-
       const insertFeatureDetailsQuery = sql`
         INSERT INTO feature_details (
           featureType, year, title, featureName, imdbId, seasonNumber, episodeNumber
@@ -96,6 +103,8 @@ export function insertSubtitle(subtitle: Subtitle) {
  `;
 
     db.run(insertSubtitleQuery);
+
+    return findOneByFileId(fileId);
   } catch (error) {
     logger.error(error);
     throw new Error('Failed to insert record ' + JSON.stringify(error));
@@ -104,10 +113,18 @@ export function insertSubtitle(subtitle: Subtitle) {
 
 export function findOneByFileId(fileId: string): Subtitle {
   const db = getDb();
-  const result = db.select().from(subtitle).where(eq(subtitle.fileId, fileId));
+  const result = db
+    .select()
+    .from(subtitleModel)
+    .leftJoin(
+      featureDetailsModel,
+      eq(subtitleModel.featureDetails, featureDetailsModel.id)
+    )
+    .where(eq(subtitleModel.fileId, fileId))
+    .all();
 
-  if (result) {
-    return mapToSubtitle(result);
+  if (result.length > 0) {
+    return mapToSubtitle(result[0]);
   }
   logger.error('Record not found');
   throw new Error('Record not found');
@@ -121,17 +138,20 @@ export function findSubtitles(searchOptions: searchOptionsTp): Subtitle[] {
 
     const query = db
       .select()
-      .from(subtitle)
-      .leftJoin(featureDetails, eq(subtitle.featureDetails, featureDetails.id))
+      .from(subtitleModel)
+      .leftJoin(
+        featureDetailsModel,
+        eq(subtitleModel.featureDetails, featureDetailsModel.id)
+      )
       .where(
         and(
-          eq(subtitle.language, language),
-          eq(featureDetails.imdbId, imdbId),
+          eq(subtitleModel.language, language),
+          eq(featureDetailsModel.imdbId, imdbId),
           ...(episodeNumber
-            ? [eq(featureDetails.episodeNumber, episodeNumber)]
+            ? [eq(featureDetailsModel.episodeNumber, episodeNumber)]
             : []),
           ...(seasonNumber
-            ? [eq(featureDetails.seasonNumber, seasonNumber)]
+            ? [eq(featureDetailsModel.seasonNumber, seasonNumber)]
             : [])
         )
       );
@@ -155,7 +175,7 @@ export function findSubtitles(searchOptions: searchOptionsTp): Subtitle[] {
 function mapToSubtitle(result: any): Subtitle {
   if (
     !result &&
-    !isValidEntity<typeof subtitle>(result, ['id', 'externalId', 'fileId'])
+    !isValidEntity<typeof subtitleModel>(result, ['id', 'externalId', 'fileId'])
   ) {
     logger.error('Entity is not valid');
     throw new Error('Entity is not valid');
