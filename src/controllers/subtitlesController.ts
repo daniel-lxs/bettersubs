@@ -162,8 +162,10 @@ export function subtitlesController(app: Elysia): Elysia {
           try {
             //TODO: Prevent duplicates
             uploadFileToS3(s3Client, s3Config, fileId, uploadedFile);
-            insertSubtitle(newSubtitle);
+            const result = insertSubtitle(newSubtitle);
+
             set.status = 201;
+            return result;
           } catch (error) {
             logger.error(error);
             throw new InternalServerError('Cannot save new subtitle');
