@@ -1,14 +1,14 @@
 import { sql, eq, and } from 'drizzle-orm';
 import createLogger from 'logging';
 
-import { FeatureDetails, Subtitle } from '../types';
-import { getDb } from './connection';
-import { subtitleModel, featureDetailsModel } from './schema';
-import { objectHasId } from '../helpers/objectHasId';
-import { isValidEntity } from '../helpers/isValidEntity';
-import { searchOptionsTp } from '../controllers/dtos';
+import { FeatureDetails, Subtitle } from '../../types';
+import { getDb } from '../connection';
+import { subtitleModel, featureDetailsModel } from '../schema';
+import { objectHasId } from '../../helpers/objectHasId';
+import { isValidEntity } from '../../helpers/isValidEntity';
+import { SearchOptionsDto } from '../../controllers/dtos';
 
-const logger = createLogger('subtitleRepository');
+const logger = createLogger('SubtitleRepository');
 
 export function insertSubtitle(subtitle: Subtitle) {
   try {
@@ -107,7 +107,7 @@ export function insertSubtitle(subtitle: Subtitle) {
     return findOneByFileId(fileId);
   } catch (error) {
     logger.error(error);
-    throw new Error('Failed to insert record ' + JSON.stringify(error));
+    throw new Error('Failed to insert record');
   }
 }
 
@@ -129,7 +129,7 @@ export function findOneByFileId(fileId: string): Subtitle {
   logger.error('Record not found');
   throw new Error('Record not found');
 }
-export function findSubtitles(searchOptions: searchOptionsTp): Subtitle[] {
+export function findSubtitles(searchOptions: SearchOptionsDto): Subtitle[] {
   try {
     logger.info('findSubtitles: ' + JSON.stringify(searchOptions));
 

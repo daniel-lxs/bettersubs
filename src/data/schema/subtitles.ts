@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { usersModel } from '../schema';
 
 export const subtitleModel = sqliteTable('subtitles', {
   id: integer('id').primaryKey(),
@@ -13,12 +14,17 @@ export const subtitleModel = sqliteTable('subtitles', {
   featureDetails: integer('featureDetailsId'),
   downloadCount: integer('downloadCount'),
   language: text('language'),
+  owner: integer('ownerId'),
 });
 
 export const subtitleRelations = relations(subtitleModel, ({ one }) => ({
   featureDetails: one(featureDetailsModel, {
     fields: [subtitleModel.featureDetails],
     references: [featureDetailsModel.id],
+  }),
+  owner: one(usersModel, {
+    fields: [subtitleModel.owner],
+    references: [usersModel.id],
   }),
 }));
 
