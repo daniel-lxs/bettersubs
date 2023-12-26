@@ -5,11 +5,7 @@ import Fuse from 'fuse.js';
 import { FeatureType, Subtitle, SubtitleProviders } from '../types';
 import { createSubtitleDto, searchOptionsDto } from './dtos';
 
-import {
-  getFileFromS3,
-  getFileFromS3OrThrow,
-  uploadFileToS3,
-} from '../storage/s3Strategy';
+import { getFileFromS3OrThrow, uploadFileToS3 } from '../storage/s3Strategy';
 
 import createLogger from 'logging';
 
@@ -20,7 +16,10 @@ import { initializeTvdbService } from '../services/tvdb/initializeTvdbService';
 import { initializeAddic7tedService } from '../services/addic7ted/initializeAddic7tedService';
 
 import { initializeS3Client } from '../storage/initializeS3Client';
-import { findSubtitles, insertSubtitle } from '../data/subtitleRepository';
+import {
+  findSubtitles,
+  insertSubtitle,
+} from '../data/repositories/subtitleRepository';
 import { generateSubtitleUrl } from '../helpers/generateSubtitleUrl';
 import { isValidEpisode } from '../helpers/isValidEpisode';
 
