@@ -3,8 +3,8 @@ import * as jwt from 'jsonwebtoken';
 import cookie from '@elysiajs/cookie';
 
 import { findUserByUsername } from '../data/repositories/userRepository';
-import { validatePassword } from '../services/auth/authService';
-import { userLoginDto } from './dtos';
+import { registerUser, validatePassword } from '../services/auth/authService';
+import { registerUserDto, userLoginDto } from './dtos';
 import getEnvOrThrow from '../helpers/getOrThrow';
 
 export function usersController(app: Elysia): Elysia {
@@ -12,11 +12,29 @@ export function usersController(app: Elysia): Elysia {
     app
       .use(cookie())
       .post(
+        '/register',
+        async ({ body, setCookie, set }) => {
+          const user = await registerUser(body);
+          const jwtSecret = getEnvOrThrow('JWT_SECRET');
+          const accessToken = jwt.sign({ username: user.username }, jwtSecret);
+          set.status = 201;
+          setCookie('auth', accessToken);
+          return user;
+        },
+        { body: registerUserDto }
+      )
+      .post(
         '/login',
         async ({ setCookie, body, set }) => {
           const jwtSecret = getEnvOrThrow('JWT_SECRET');
           const { username, password } = body;
           const foundUser = findUserByUsername(username);
+
+          if (!foundUser || !foundUser.passwordHash) {
+            set.status = 401;
+            throw new Error('Invalid user and password combination');
+          }
+
           const isValidPassword = validatePassword(
             password,
             foundUser.passwordHash
@@ -34,13 +52,19 @@ export function usersController(app: Elysia): Elysia {
       )
       .get('/me', ({ cookie: { auth }, set }) => {
         const jwtSecret = getEnvOrThrow('JWT_SECRET');
-        const decodedUsername = jwt.verify(auth, jwtSecret);
-        if (!decodedUsername || typeof decodedUsername !== 'string') {
-          set.status = 401;
-          throw new Error('Invalid access token');
+        const decodedPayload = jwt.verify(auth, jwtSecret);
+
+        if (
+          typeof decodedPayload === 'object' &&
+          'username' in decodedPayload
+        ) {
+          const user = findUserByUsername(decodedPayload.username);
+          delete user.passwordHash;
+          return user;
         }
-        const user = findUserByUsername(decodedUsername);
-        return user;
+
+        set.status = 401;
+        throw new Error('Invalid access token');
       })
   );
 
