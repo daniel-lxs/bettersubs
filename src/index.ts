@@ -4,6 +4,7 @@ import createLogger from 'logging';
 
 import getEnvOrThrow from './helpers/getOrThrow';
 import { subtitlesController } from './controllers/subtitlesController';
+import { usersController } from './controllers/usersController';
 
 const logger = createLogger('Main');
 
@@ -35,6 +36,7 @@ let app = new Elysia()
 
 //Use controller
 app = subtitlesController(app);
+app = usersController(app);
 
 app.listen(port);
 
