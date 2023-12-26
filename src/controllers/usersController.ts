@@ -19,6 +19,8 @@ export function usersController(app: Elysia): Elysia {
           const accessToken = jwt.sign({ username: user.username }, jwtSecret);
           set.status = 201;
           setCookie('auth', accessToken);
+
+          delete user.passwordHash;
           return user;
         },
         { body: registerUserDto }
