@@ -7,6 +7,9 @@
     "run-migrations": "bun run src/data/migrate.ts",
     "generate-migrations": "bunx drizzle-kit generate:sqlite --schema ./src/data/schema/index.ts"
   },
+  "trustedDependencies": [
+    "bcrypt"
+  ],
   "dependencies": {
     "@aws-sdk/client-s3": "^3.462.0",
     "@elysiajs/cookie": "^0.8.0",
