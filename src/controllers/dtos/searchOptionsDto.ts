@@ -11,4 +11,4 @@ export const searchOptionsDto = t.Object({
   seasonNumber: t.Optional(t.Number({ minimum: 1 })),
 });
 
-export type searchOptionsTp = (typeof searchOptionsDto)['static'];
+export type SearchOptionsDto = (typeof searchOptionsDto)['static'];

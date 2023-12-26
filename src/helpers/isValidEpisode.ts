@@ -1,9 +1,9 @@
-import { createSubtitleTp } from '../controllers/dtos';
+import { CreateSubtitleDto } from '../controllers/dtos';
 
 export function isValidEpisode({
   seasonNumber,
   episodeNumber,
-}: createSubtitleTp): boolean {
+}: CreateSubtitleDto): boolean {
   if (!seasonNumber || !episodeNumber) {
     return false;
   }

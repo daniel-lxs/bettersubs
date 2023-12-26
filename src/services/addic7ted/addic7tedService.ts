@@ -7,7 +7,7 @@ import {
 } from './types';
 import { Subtitle, FeatureType, SubtitleProviders } from '../../types';
 import { TvdbService } from '../tvdb/tvdbService';
-import { searchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
+import { SearchOptionsDto } from '../../controllers/dtos/searchOptionsDto';
 import { ShowData } from '../tvdb/types';
 
 const logger = createLogger('Addic7edService');
@@ -91,7 +91,7 @@ export class Addic7edService {
     };
   }
 
-  async searchSubtitles(searchOptions: searchOptionsTp): Promise<Subtitle[]> {
+  async searchSubtitles(searchOptions: SearchOptionsDto): Promise<Subtitle[]> {
     try {
       const { featureType, data: tvdbShowData } =
         await this.tvdbService.getFeatureByImdbId(searchOptions.imdbId);

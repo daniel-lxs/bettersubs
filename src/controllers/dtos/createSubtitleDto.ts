@@ -11,4 +11,4 @@ export const createSubtitleDto = t.Object({
   episodeNumber: t.Optional(t.String()),
 });
 
-export type createSubtitleTp = (typeof createSubtitleDto)['static'];
+export type CreateSubtitleDto = (typeof createSubtitleDto)['static'];

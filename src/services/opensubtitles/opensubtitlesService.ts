@@ -10,7 +10,7 @@ import {
 } from './types';
 import { Subtitle } from '../../types/Subtitle';
 import { FeatureType, SubtitleProviders } from '../../types';
-import { searchOptionsTp } from '../../controllers/dtos/searchOptionsDto';
+import { SearchOptionsDto } from '../../controllers/dtos/searchOptionsDto';
 import objectToRecord from '../../helpers/objectToRecord';
 
 const logger = createLogger('OpensubtitlesService');
@@ -117,7 +117,7 @@ export class OpensubtitlesService {
     return searchResponse.data.map(this.mapSubtitleAttributes);
   }
 
-  async searchSubtitles(searchOptions: searchOptionsTp): Promise<Subtitle[]> {
+  async searchSubtitles(searchOptions: SearchOptionsDto): Promise<Subtitle[]> {
     const headers = this.getHeaders();
 
     try {
