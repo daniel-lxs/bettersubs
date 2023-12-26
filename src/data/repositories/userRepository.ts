@@ -65,7 +65,7 @@ export function findUserByUsername(username: string): User {
     .select()
     .from(usersModel)
     .where(eq(usersModel.username, username))
-    .get();
+    .all()[0];
   if (
     isValidEntity(result, [
       'id',
